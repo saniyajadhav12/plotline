@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+.env.*
+!.env.example
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+.vercel/
+
+# General
+.DS_Store
+*.log
+.idea/
+.vscode/
+
+# Alembic
+backend/alembic/versions/__pycache__/
+
+# Docker
+*.pid
