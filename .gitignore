@@ -28,3 +28,6 @@ backend/alembic/versions/__pycache__/
 
 # Ingestion pipeline data (regenerate via scripts, don't commit)
 backend/app/data/
+
+# Local testing artifacts
+cookies.txt
