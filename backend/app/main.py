@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from app.routers import auth, movies, ratings, watchlist
+from app.routers import auth, movies, ratings, watchlist, recommendations
 
 app = FastAPI(title="Plotline API")
 
@@ -8,6 +8,7 @@ app.include_router(auth.router)
 app.include_router(movies.router)
 app.include_router(ratings.router)
 app.include_router(watchlist.router)
+app.include_router(recommendations.router)
 
 
 @app.get("/health")
