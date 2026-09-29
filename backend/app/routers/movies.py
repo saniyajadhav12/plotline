@@ -31,11 +31,20 @@ def list_genres(db: Session = Depends(get_db)):
 def list_movies(
     q: str | None = Query(default=None, description="Search by title"),
     genre: str | None = Query(default=None, description="Filter by genre"),
+    sort: str = Query(default="title", description="Sort order: title or popularity"),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
     db: Session = Depends(get_db),
 ):
-    query = db.query(Movie)
+    if sort == "popularity":
+        rating_count = func.count(Rating.id).label("rating_count")
+        query = (
+            db.query(Movie, rating_count)
+            .outerjoin(Rating, Rating.movie_id == Movie.id)
+            .group_by(Movie.id)
+        )
+    else:
+        query = db.query(Movie)
 
     if q:
         query = query.filter(Movie.title.ilike(f"%{q}%"))
@@ -43,13 +52,23 @@ def list_movies(
     if genre:
         query = query.filter(Movie.genres.any(genre))
 
-    total = query.count()
-    results = (
-        query.order_by(Movie.title)
-        .offset((page - 1) * page_size)
-        .limit(page_size)
-        .all()
-    )
+    if sort == "popularity":
+        total = query.count()
+        rows = (
+            query.order_by(rating_count.desc(), Movie.title)
+            .offset((page - 1) * page_size)
+            .limit(page_size)
+            .all()
+        )
+        results = [movie for movie, _ in rows]
+    else:
+        total = query.count()
+        results = (
+            query.order_by(Movie.title)
+            .offset((page - 1) * page_size)
+            .limit(page_size)
+            .all()
+        )
 
     return MovieListResponse(
         total=total,
