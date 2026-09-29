@@ -92,3 +92,26 @@ def test_list_genres_returns_sorted_distinct_genres(client, db_session):
     assert response.status_code == 200
     data = response.json()
     assert data == sorted(set(["Comedy", "Drama", "Action"]))
+
+
+def test_list_movies_sort_by_popularity(client, db_session):
+    from app.models import Rating, User
+    from app.core.security import hash_password
+
+    popular = _create_movie(db_session, title="Popular Movie")
+    unpopular = _create_movie(db_session, title="Unpopular Movie")
+
+    user1 = User(id=uuid.uuid4(), email="rater1@example.com", hashed_password=hash_password("password123"))
+    user2 = User(id=uuid.uuid4(), email="rater2@example.com", hashed_password=hash_password("password123"))
+    db_session.add_all([user1, user2])
+    db_session.commit()
+
+    db_session.add(Rating(user_id=user1.id, movie_id=popular.id, rating_value=5))
+    db_session.add(Rating(user_id=user2.id, movie_id=popular.id, rating_value=4))
+    db_session.commit()
+
+    response = client.get("/movies?sort=popularity")
+    assert response.status_code == 200
+    data = response.json()
+    titles = [m["title"] for m in data["results"]]
+    assert titles.index("Popular Movie") < titles.index("Unpopular Movie")
