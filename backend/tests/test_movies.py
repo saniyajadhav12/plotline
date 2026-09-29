@@ -82,3 +82,13 @@ def test_get_movie_detail(client, db_session):
 def test_get_movie_detail_not_found(client):
     response = client.get(f"/movies/{uuid.uuid4()}")
     assert response.status_code == 404
+
+
+def test_list_genres_returns_sorted_distinct_genres(client, db_session):
+    _create_movie(db_session, title="Movie A", genres=["Comedy", "Drama"])
+    _create_movie(db_session, title="Movie B", genres=["Action", "Comedy"])
+
+    response = client.get("/movies/genres")
+    assert response.status_code == 200
+    data = response.json()
+    assert data == sorted(set(["Comedy", "Drama", "Action"]))

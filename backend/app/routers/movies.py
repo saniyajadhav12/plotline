@@ -17,6 +17,16 @@ from app.schemas.movie import (
 router = APIRouter(prefix="/movies", tags=["movies"])
 
 
+@router.get("/genres", response_model=list[str])
+def list_genres(db: Session = Depends(get_db)):
+    rows = db.query(Movie.genres).filter(Movie.genres.isnot(None)).all()
+    genre_set = set()
+    for (genres,) in rows:
+        if genres:
+            genre_set.update(genres)
+    return sorted(genre_set)
+
+
 @router.get("", response_model=MovieListResponse)
 def list_movies(
     q: str | None = Query(default=None, description="Search by title"),
