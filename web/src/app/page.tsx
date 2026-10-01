@@ -36,7 +36,7 @@ export default async function HomePage() {
     ),
   ]);
 
-  const recommendedMovies = recommendations.map((r) => r.movie);
+  const recommendedMovies = recommendations.map((r) => ({ ...r.movie, recommendationId: r.id }));
 
   // Group recommendations by their first genre for "Because you liked X" rows
   const byGenre = new Map<string, Movie[]>();
