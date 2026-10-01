@@ -11,6 +11,30 @@ services:
       - "5433:5432"
     volumes:
       - plotline_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U plotline"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: plotline-backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://plotline:plotline_dev_password@db:5432/plotline
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-changeme}
+      JWT_ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: 30
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      TMDB_API_KEY: ${TMDB_API_KEY:-}
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
 
 volumes:
   plotline_pgdata:

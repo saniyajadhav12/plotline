@@ -57,15 +57,28 @@ Plotline is a full-stack movie recommendation web application built as a portfol
 
 ### Backend
 
+**Option A: Docker (recommended)** - runs Postgres and the API together:
+
+    export JWT_SECRET_KEY=your_secret_here
+    export GEMINI_API_KEY=your_gemini_key_here
+    export TMDB_API_KEY=your_tmdb_key_here
+    docker compose -f infra/docker-compose.yml up --build
+
+The API will be available at http://localhost:8000. Run migrations once the containers are up:
+
+    docker exec -it plotline-backend python -m alembic upgrade head
+
+**Option B: Local Python** - for active development with hot-reload:
+
     cd backend
     python3 -m venv venv
     source venv/bin/activate
     pip install -r requirements.txt
     cp .env.example .env   # then fill in real values
 
-Start local Postgres:
+Start local Postgres only:
 
-    docker compose -f ../infra/docker-compose.yml up -d
+    docker compose -f ../infra/docker-compose.yml up -d db
 
 Run migrations:
 
@@ -73,7 +86,7 @@ Run migrations:
 
 Run the API:
 
-    uvicorn app.main:app --reload
+    python -m uvicorn app.main:app --reload
 
 ### Frontend
 
