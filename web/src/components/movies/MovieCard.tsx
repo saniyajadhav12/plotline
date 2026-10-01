@@ -6,14 +6,14 @@ type MovieCardProps = {
   title: string;
   year: number | null;
   poster_url: string | null;
+  recommendationId?: string;
 };
 
-export function MovieCard({ id, title, year, poster_url }: MovieCardProps) {
+export function MovieCard({ id, title, year, poster_url, recommendationId }: MovieCardProps) {
+  const href = recommendationId ? `/movies/${id}?rec=${recommendationId}` : `/movies/${id}`;
+
   return (
-    <Link
-      href={`/movies/${id}`}
-      className="group block flex-shrink-0 w-[150px]"
-    >
+    <Link href={href} className="group block flex-shrink-0 w-[150px]">
       <div className="relative aspect-[2/3] overflow-hidden bg-film transition-transform duration-200 group-hover:-translate-y-1">
         {poster_url ? (
           <Image

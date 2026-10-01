@@ -5,6 +5,7 @@ type Movie = {
   title: string;
   year: number | null;
   poster_url: string | null;
+  recommendationId?: string;
 };
 
 export function MovieRow({
