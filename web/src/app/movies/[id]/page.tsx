@@ -166,23 +166,43 @@ export default async function MovieDetailPage({
               </div>
             )}
 
-            {movie.watch_providers.length > 0 && (
-              <div>
-                <h2 className="text-sm font-medium text-ink mb-2">
-                  Watch on ({region})
-                </h2>
-                <div className="flex flex-wrap gap-2">
-                  {movie.watch_providers.map((p, i) => (
-                    <span
-                      key={i}
-                      className="text-xs text-ink border border-ink/15 px-2.5 py-1"
-                    >
-                      {p.provider_name}
-                    </span>
-                  ))}
+            {movie.watch_providers.length > 0 && (() => {
+              const grouped = new Map<string, Set<string>>();
+              for (const p of movie.watch_providers) {
+                const existing = grouped.get(p.provider_name);
+                if (existing) {
+                  existing.add(p.provider_type);
+                } else {
+                  grouped.set(p.provider_name, new Set([p.provider_type]));
+                }
+              }
+              const typeLabel = (types: Set<string>) => {
+                if (types.has("subscription")) return "Stream";
+                if (types.has("rent") && types.has("buy")) return "Rent/Buy";
+                if (types.has("rent")) return "Rent";
+                if (types.has("buy")) return "Buy";
+                return "";
+              };
+
+              return (
+                <div>
+                  <h2 className="text-sm font-medium text-ink mb-2">
+                    Watch on ({region})
+                  </h2>
+                  <div className="flex flex-wrap gap-2">
+                    {Array.from(grouped.entries()).map(([name, types]) => (
+                      <span
+                        key={name}
+                        className="text-xs text-ink border border-ink/15 px-2.5 py-1"
+                      >
+                        {name}
+                        <span className="text-silver"> · {typeLabel(types)}</span>
+                      </span>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
           </div>
         </div>
       </main>
