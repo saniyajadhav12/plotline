@@ -1,5 +1,4 @@
-import { redirect } from "next/navigation";
-import { getToken } from "@/lib/session";
+import { requireToken } from "@/lib/require-auth";
 import { backendFetch } from "@/lib/api";
 import { TopNav } from "@/components/layout/TopNav";
 import { MovieRow } from "@/components/movies/MovieRow";
@@ -24,10 +23,7 @@ type MovieListResponse = {
 };
 
 export default async function HomePage() {
-  const token = await getToken();
-  if (!token) {
-    redirect("/login");
-  }
+  const token = await requireToken();
 
   const [recommendations, trending] = await Promise.all([
     backendFetch<Recommendation[]>("/users/me/recommendations", { token }).catch(() => []),

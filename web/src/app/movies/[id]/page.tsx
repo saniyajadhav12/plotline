@@ -1,6 +1,5 @@
-import { redirect } from "next/navigation";
 import Image from "next/image";
-import { getToken } from "@/lib/session";
+import { requireToken, backendFetchOrRedirect } from "@/lib/require-auth";
 import { backendFetch } from "@/lib/api";
 import { TopNav } from "@/components/layout/TopNav";
 import { StarRating } from "@/components/movie-detail/StarRating";
@@ -51,10 +50,7 @@ export default async function MovieDetailPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ rec?: string }>;
 }) {
-  const token = await getToken();
-  if (!token) {
-    redirect("/login");
-  }
+  const token = await requireToken();
 
   const { id } = await params;
   const { rec } = await searchParams;
@@ -62,7 +58,7 @@ export default async function MovieDetailPage({
   const user = await backendFetch<UserMe>("/auth/me", { token }).catch(() => null);
   const region = user?.region_preference || "US";
 
-  const movie = await backendFetch<MovieDetail>(`/movies/${id}?region=${region}`, { token });
+  const movie = await backendFetchOrRedirect<MovieDetail>(`/movies/${id}?region=${region}`, token);
 
   const [myRatings, myWatchlist, recommendations] = await Promise.all([
     backendFetch<{ movie: { id: string }; rating_value: number }[]>("/users/me/ratings", {

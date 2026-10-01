@@ -1,5 +1,4 @@
-import { redirect } from "next/navigation";
-import { getToken } from "@/lib/session";
+import { requireToken } from "@/lib/require-auth";
 import { backendFetch } from "@/lib/api";
 import { TopNav } from "@/components/layout/TopNav";
 import { MovieCard } from "@/components/movies/MovieCard";
@@ -16,10 +15,7 @@ type WatchlistItem = {
 };
 
 export default async function WatchlistPage() {
-  const token = await getToken();
-  if (!token) {
-    redirect("/login");
-  }
+  const token = await requireToken();
 
   const items = await backendFetch<WatchlistItem[]>("/users/me/watchlist", { token }).catch(
     () => []
