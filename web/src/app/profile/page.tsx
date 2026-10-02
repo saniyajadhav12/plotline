@@ -126,7 +126,7 @@ export default async function ProfilePage() {
             Your Ratings
           </h2>
           {ratings.length === 0 ? (
-            <p className="text-silver">You haven't rated any movies yet.</p>
+            <p className="text-silver">You haven&apos;t rated any movies yet.</p>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-6">
               {ratings.map((r) => (

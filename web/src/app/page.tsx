@@ -55,7 +55,7 @@ export default async function HomePage() {
               Welcome to Plotline
             </h1>
             <p className="text-silver">
-              Rate a few movies and we'll start building your recommendations.
+              Rate a few movies and we&apos;ll start building your recommendations.
             </p>
           </div>
         ) : (

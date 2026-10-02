@@ -66,8 +66,6 @@ def recommend_content_based(
     Returns {movie_id: score} for the top_n unrated movies for this user,
     scored by average content similarity to movies the user rated >= 4.
     """
-    user_id_str = str(user_id)
-
     liked_ratings = (
         db.query(Rating)
         .filter(Rating.user_id == user_id, Rating.rating_value >= 4)

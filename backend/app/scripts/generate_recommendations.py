@@ -5,7 +5,6 @@ demo subset of users, and writes them into recommendation_logs.
 Safe to re-run: clears each user's existing recommendation_logs entries
 before writing new ones.
 """
-import uuid
 
 from app.core.database import SessionLocal
 from app.models import Movie, User, RecommendationLog, Rating

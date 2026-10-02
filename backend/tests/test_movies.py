@@ -99,7 +99,7 @@ def test_list_movies_sort_by_popularity(client, db_session):
     from app.core.security import hash_password
 
     popular = _create_movie(db_session, title="Popular Movie")
-    unpopular = _create_movie(db_session, title="Unpopular Movie")
+    _unpopular = _create_movie(db_session, title="Unpopular Movie")
 
     user1 = User(id=uuid.uuid4(), email="rater1@example.com", hashed_password=hash_password("password123"))
     user2 = User(id=uuid.uuid4(), email="rater2@example.com", hashed_password=hash_password("password123"))
