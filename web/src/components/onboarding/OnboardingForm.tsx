@@ -43,8 +43,8 @@ export function OnboardingForm({
 
   useEffect(() => {
     if (!query.trim()) {
-      setSearchResults([]);
-      return;
+      const timeout = setTimeout(() => setSearchResults([]), 0);
+      return () => clearTimeout(timeout);
     }
     const timeout = setTimeout(() => {
       fetch(`/api/movies?q=${encodeURIComponent(query)}&page_size=12&sort=popularity`)
