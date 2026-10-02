@@ -1,0 +1,7 @@
+line-length = 120
+target-version = "py312"
+exclude = ["backend/alembic/versions"]
+
+[lint]
+select = ["E", "F", "W"]
+ignore = ["E501"]

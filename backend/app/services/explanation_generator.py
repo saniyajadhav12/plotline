@@ -57,7 +57,6 @@ def generate_explanation(user_id: uuid.UUID, movie: Movie, breakdown: dict, db: 
         f"Write as if speaking directly to the user."
     )
 
-    last_error = None
     for attempt in range(1, max_retries + 1):
         try:
             response = _client.models.generate_content(
@@ -66,12 +65,11 @@ def generate_explanation(user_id: uuid.UUID, movie: Movie, breakdown: dict, db: 
             )
             return response.text.strip()
         except Exception as e:
-            last_error = e
             print(f"  [Gemini] attempt {attempt}/{max_retries} failed: {e}")
             if attempt < max_retries:
                 time.sleep(2 * attempt)
 
     # All retries exhausted: fall back to a simple templated explanation
     # rather than failing the whole batch over one flaky API call.
-    print(f"  [Gemini] all retries failed, using fallback explanation")
+    print("  [Gemini] all retries failed, using fallback explanation")
     return f"Recommended based on your viewing history and preferences. {context}"

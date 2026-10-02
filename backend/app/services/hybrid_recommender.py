@@ -6,7 +6,6 @@ watchlist soft signal into one blended score per candidate movie.
 """
 import uuid
 
-import pandas as pd
 from sqlalchemy.orm import Session
 
 from app.models import Watchlist
