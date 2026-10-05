@@ -1,14 +1,16 @@
 """
 Step 1 of the ingestion pipeline: load MovieLens CSVs, select the
-top N most-rated movies, and filter ratings/links down to just those.
-No TMDb calls happen here — this is pure local data wrangling.
+top N most-rated movies and top M most-active users, and filter
+ratings/links down to just those. No TMDb calls happen here — this
+is pure local data wrangling.
 """
 from pathlib import Path
 
 import pandas as pd
 
-DATA_DIR = Path(__file__).resolve().parents[1] / "data" / "raw" / "ml-latest-small"
-TOP_N_MOVIES = 1500
+DATA_DIR = Path(__file__).resolve().parents[1] / "data" / "raw" / "ml-latest"
+TOP_N_MOVIES = 10000
+TOP_M_USERS = 5000
 
 
 def load_and_filter():
@@ -36,7 +38,15 @@ def load_and_filter():
     filtered_movies = filtered_movies[filtered_movies["movieId"].isin(valid_movie_ids)]
     filtered_ratings = filtered_ratings[filtered_ratings["movieId"].isin(valid_movie_ids)]
 
-    print(f"After filtering to top {TOP_N_MOVIES} most-rated movies with valid tmdbId:")
+    # Cap to the top M most-active users (by rating count) to keep
+    # similarity-matrix computation bounded at this larger catalog size
+    user_rating_counts = filtered_ratings.groupby("userId").size().reset_index(name="count")
+    top_users = user_rating_counts.sort_values("count", ascending=False).head(TOP_M_USERS)
+    top_user_ids = set(top_users["userId"])
+    filtered_ratings = filtered_ratings[filtered_ratings["userId"].isin(top_user_ids)]
+
+    print(f"After filtering to top {TOP_N_MOVIES} most-rated movies with valid tmdbId, "
+          f"and top {TOP_M_USERS} most-active users:")
     print(f"  {len(filtered_movies)} movies, {len(filtered_ratings)} ratings, {len(filtered_links)} links")
     print(f"  {filtered_ratings['userId'].nunique()} unique users")
 

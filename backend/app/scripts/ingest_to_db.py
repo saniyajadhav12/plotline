@@ -6,15 +6,20 @@ movielens_id so this is safe to re-run.
 Also creates placeholder users (one per MovieLens userId) so that
 ratings have a valid user_id to reference. These are seed/demo users,
 not real accounts — no usable password is set.
+
+Ratings are bulk-inserted via psycopg2.extras.execute_values in
+batches, since at this dataset's scale (millions of rows) row-by-row
+ORM inserts are far too slow.
 """
 import json
 import uuid
 from pathlib import Path
 
+import psycopg2.extras
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from app.core.database import SessionLocal
-from app.models import Movie, CastCrew, WatchProvider, Rating, User
+from app.models import Movie, CastCrew, WatchProvider, User
 from app.scripts.load_movielens import load_and_filter
 
 CACHE_DIR = Path(__file__).resolve().parents[1] / "data" / "cache" / "tmdb"
@@ -24,6 +29,8 @@ PROVIDER_TYPE_MAP = {
     "rent": "rent",
     "buy": "buy",
 }
+
+RATINGS_BATCH_SIZE = 20000
 
 
 def load_cached_tmdb(tmdb_id: int) -> dict | None:
@@ -134,20 +141,46 @@ def upsert_placeholder_users(db, movielens_user_ids: list[int]) -> dict[int, uui
     return user_id_map
 
 
-def upsert_ratings(db, ratings_df, movielens_to_movie_id: dict[int, uuid.UUID], movielens_to_user_id: dict[int, uuid.UUID]):
-    db.query(Rating).delete()
+def bulk_insert_ratings(db, ratings_df, movielens_to_movie_id: dict[int, uuid.UUID], movielens_to_user_id: dict[int, uuid.UUID]):
+    raw_conn = db.connection().connection
+    cur = raw_conn.cursor()
+
+    cur.execute("DELETE FROM ratings")
+    raw_conn.commit()
+
+    insert_sql = (
+        "INSERT INTO ratings (id, user_id, movie_id, rating_value) "
+        "VALUES %s ON CONFLICT (user_id, movie_id) DO NOTHING"
+    )
+
+    batch = []
+    total_inserted = 0
+    total_skipped = 0
 
     for row in ratings_df.itertuples():
         movie_id = movielens_to_movie_id.get(row.movieId)
         user_id = movielens_to_user_id.get(row.userId)
         if not movie_id or not user_id:
+            total_skipped += 1
             continue
+
         rating_value = max(1, min(5, round(row.rating)))
-        db.add(Rating(
-            user_id=user_id,
-            movie_id=movie_id,
-            rating_value=rating_value,
-        ))
+        batch.append((str(uuid.uuid4()), str(user_id), str(movie_id), rating_value))
+
+        if len(batch) >= RATINGS_BATCH_SIZE:
+            psycopg2.extras.execute_values(cur, insert_sql, batch)
+            raw_conn.commit()
+            total_inserted += len(batch)
+            print(f"  {total_inserted} ratings inserted...")
+            batch = []
+
+    if batch:
+        psycopg2.extras.execute_values(cur, insert_sql, batch)
+        raw_conn.commit()
+        total_inserted += len(batch)
+
+    cur.close()
+    print(f"Ratings done: {total_inserted} inserted, {total_skipped} skipped (missing movie/user mapping)")
 
 
 def run():
@@ -184,10 +217,8 @@ def run():
         db.commit()
         print(f"Users done: {len(movielens_to_user_id)}")
 
-        print("Upserting ratings...")
-        upsert_ratings(db, ratings_df, movielens_to_movie_id, movielens_to_user_id)
-        db.commit()
-        print(f"Ratings done: {len(ratings_df)} rows processed")
+        print("Bulk inserting ratings...")
+        bulk_insert_ratings(db, ratings_df, movielens_to_movie_id, movielens_to_user_id)
 
     finally:
         db.close()
