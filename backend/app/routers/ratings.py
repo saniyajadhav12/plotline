@@ -1,22 +1,39 @@
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
-from app.core.database import get_db
+from app.core.database import get_db, SessionLocal
 from app.models import Movie, Rating, User
 from app.routers.auth import get_current_user
 from app.schemas.movie import MovieListItem
 from app.schemas.rating import RateMovieRequest, RatingResponse, RatingWithMovieResponse
+from app.services.recommendation_generator import generate_recommendations_for_user
 
 router = APIRouter(tags=["ratings"])
+
+MIN_RATINGS_FOR_RECOMMENDATIONS = 3
+
+
+def _generate_recommendations_background(user_id):
+    """Runs in a background task after the HTTP response is sent.
+    Opens its own DB session since the request-scoped one is closed by then."""
+    db = SessionLocal()
+    try:
+        count = generate_recommendations_for_user(user_id, db)
+        print(f"[background] Generated {count} recommendations for user {user_id} after rating")
+    except Exception as e:
+        print(f"[background] Failed to generate recommendations for user {user_id}: {e}")
+    finally:
+        db.close()
 
 
 @router.post("/movies/{movie_id}/ratings", response_model=RatingResponse, status_code=status.HTTP_201_CREATED)
 def rate_movie(
     movie_id: uuid.UUID,
     payload: RateMovieRequest,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -37,6 +54,10 @@ def rate_movie(
     result = db.execute(stmt)
     db.commit()
     rating_obj = result.scalars().first()
+
+    rating_count = db.query(Rating).filter(Rating.user_id == current_user.id).count()
+    if rating_count >= MIN_RATINGS_FOR_RECOMMENDATIONS:
+        background_tasks.add_task(_generate_recommendations_background, current_user.id)
 
     return RatingResponse(
         id=rating_obj.id,
