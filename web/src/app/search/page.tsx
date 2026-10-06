@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { TopNav } from "@/components/layout/TopNav";
 import { MovieCard } from "@/components/movies/MovieCard";
 
@@ -18,6 +18,7 @@ export default function SearchPage() {
   const [results, setResults] = useState<Movie[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
+  const requestIdRef = useRef(0);
 
   useEffect(() => {
     fetch("/api/movies/genres")
@@ -27,16 +28,20 @@ export default function SearchPage() {
 
   useEffect(() => {
     const timeout = setTimeout(() => {
+      const thisRequestId = ++requestIdRef.current;
+
       const params = new URLSearchParams();
       if (query.trim()) params.set("q", query.trim());
       if (genre) params.set("genre", genre);
-      params.set("sort", "popularity");
+      params.set("sort", query.trim() ? "newest" : "popularity");
       params.set("page_size", "24");
 
       setLoading(true);
       fetch(`/api/movies?${params.toString()}`)
         .then((res) => res.json())
         .then((data) => {
+          // Ignore stale responses from an earlier, since-superseded request
+          if (thisRequestId !== requestIdRef.current) return;
           setResults(data.results);
           setTotal(data.total);
           setLoading(false);

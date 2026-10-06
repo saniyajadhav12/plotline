@@ -43,6 +43,8 @@ class MovieDetailResponse(BaseModel):
     description: str | None
     poster_url: str | None
     average_rating: float | None
+    tmdb_rating: float | None
+    tmdb_vote_count: int | None
     cast: list[CastCrewResponse]
     director: list[CastCrewResponse]
     watch_providers: list[WatchProviderResponse]

@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import Column, String, Integer, Text, DateTime
+from sqlalchemy import Column, String, Integer, Text, DateTime, Float
 from sqlalchemy.dialects.postgresql import UUID, ARRAY
 from sqlalchemy.sql import func
 
@@ -18,4 +18,7 @@ class Movie(Base):
     genres = Column(ARRAY(String), nullable=True)
     description = Column(Text, nullable=True)
     poster_url = Column(String(1000), nullable=True)
+    popularity_score = Column(Float, nullable=True, index=True)
+    tmdb_vote_average = Column(Float, nullable=True)
+    tmdb_vote_count = Column(Integer, nullable=True)
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())

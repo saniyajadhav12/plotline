@@ -1,3 +1,4 @@
+import re
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -27,48 +28,49 @@ def list_genres(db: Session = Depends(get_db)):
     return sorted(genre_set)
 
 
+def _normalize_for_search(text: str) -> str:
+    """Strip anything that isn't a letter or digit, lowercase the rest,
+    so \"Spider-Man\", \"spider man\", and \"spiderman\" all match."""
+    return re.sub(r"[^a-z0-9]", "", text.lower())
+
+
 @router.get("", response_model=MovieListResponse)
 def list_movies(
     q: str | None = Query(default=None, description="Search by title"),
     genre: str | None = Query(default=None, description="Filter by genre"),
-    sort: str = Query(default="title", description="Sort order: title or popularity"),
+    sort: str = Query(
+        default="title",
+        description="Sort order: title, popularity (real-world TMDb popularity), or newest (release year)",
+    ),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
     db: Session = Depends(get_db),
 ):
-    if sort == "popularity":
-        rating_count = func.count(Rating.id).label("rating_count")
-        query = (
-            db.query(Movie, rating_count)
-            .outerjoin(Rating, Rating.movie_id == Movie.id)
-            .group_by(Movie.id)
-        )
-    else:
-        query = db.query(Movie)
+    query = db.query(Movie)
 
     if q:
-        query = query.filter(Movie.title.ilike(f"%{q}%"))
+        normalized_fn = func.regexp_replace(func.lower(Movie.title), r"[^a-z0-9]", "", "g")
+        normalized_query = _normalize_for_search(q)
+        query = query.filter(normalized_fn.like(f"%{normalized_query}%"))
 
     if genre:
         query = query.filter(Movie.genres.any(genre))
 
+    total = query.count()
+
     if sort == "popularity":
-        total = query.count()
-        rows = (
-            query.order_by(rating_count.desc(), Movie.title)
-            .offset((page - 1) * page_size)
-            .limit(page_size)
-            .all()
-        )
-        results = [movie for movie, _ in rows]
+        order = (Movie.popularity_score.desc().nullslast(), Movie.title)
+    elif sort == "newest":
+        order = (Movie.year.desc().nullslast(), Movie.title)
     else:
-        total = query.count()
-        results = (
-            query.order_by(Movie.title)
-            .offset((page - 1) * page_size)
-            .limit(page_size)
-            .all()
-        )
+        order = (Movie.title,)
+
+    results = (
+        query.order_by(*order)
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+        .all()
+    )
 
     return MovieListResponse(
         total=total,
@@ -113,6 +115,8 @@ def get_movie_detail(
         description=movie.description,
         poster_url=movie.poster_url,
         average_rating=round(float(avg_rating), 2) if avg_rating else None,
+        tmdb_rating=round(movie.tmdb_vote_average, 1) if movie.tmdb_vote_average else None,
+        tmdb_vote_count=movie.tmdb_vote_count,
         cast=cast,
         director=director,
         watch_providers=watch_providers,
