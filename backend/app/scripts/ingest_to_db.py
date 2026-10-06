@@ -51,6 +51,9 @@ def upsert_movie(db, movielens_id: int, tmdb_id: int, ml_title: str, ml_genres: 
     genres = [g["name"] for g in tmdb_data.get("genres", [])] or ml_genres.replace("|", ",").split(",")
     poster_path = tmdb_data.get("poster_path")
     poster_url = f"https://image.tmdb.org/t/p/w500{poster_path}" if poster_path else None
+    popularity_score = tmdb_data.get("popularity")
+    tmdb_vote_average = tmdb_data.get("vote_average")
+    tmdb_vote_count = tmdb_data.get("vote_count")
 
     stmt = pg_insert(Movie).values(
         id=uuid.uuid4(),
@@ -61,6 +64,9 @@ def upsert_movie(db, movielens_id: int, tmdb_id: int, ml_title: str, ml_genres: 
         genres=genres,
         description=tmdb_data.get("overview"),
         poster_url=poster_url,
+        popularity_score=popularity_score,
+        tmdb_vote_average=tmdb_vote_average,
+        tmdb_vote_count=tmdb_vote_count,
     ).on_conflict_do_update(
         index_elements=["tmdb_id"],
         set_={
@@ -69,6 +75,9 @@ def upsert_movie(db, movielens_id: int, tmdb_id: int, ml_title: str, ml_genres: 
             "genres": genres,
             "description": tmdb_data.get("overview"),
             "poster_url": poster_url,
+            "popularity_score": popularity_score,
+            "tmdb_vote_average": tmdb_vote_average,
+            "tmdb_vote_count": tmdb_vote_count,
         },
     ).returning(Movie.id)
 

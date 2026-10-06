@@ -24,6 +24,8 @@ type MovieDetail = {
   description: string | null;
   poster_url: string | null;
   average_rating: number | null;
+  tmdb_rating: number | null;
+  tmdb_vote_count: number | null;
   cast: CastCrewMember[];
   director: CastCrewMember[];
   watch_providers: WatchProvider[];
@@ -122,10 +124,23 @@ export default async function MovieDetailPage({
               </div>
             )}
 
-            {movie.average_rating !== null && (
-              <p className="text-sm text-ink mb-5">
-                <span className="text-gold">★</span> {movie.average_rating} average rating
-              </p>
+            {(movie.average_rating !== null || movie.tmdb_rating !== null) && (
+              <div className="flex flex-wrap items-center gap-4 text-sm text-ink mb-5">
+                {movie.tmdb_rating !== null && (
+                  <span>
+                    <span className="text-gold">★</span> {movie.tmdb_rating}/10{" "}
+                    <span className="text-silver">
+                      TMDb{movie.tmdb_vote_count ? ` (${movie.tmdb_vote_count.toLocaleString()} votes)` : ""}
+                    </span>
+                  </span>
+                )}
+                {movie.average_rating !== null && (
+                  <span>
+                    <span className="text-gold">★</span> {movie.average_rating}/5{" "}
+                    <span className="text-silver">Plotline users</span>
+                  </span>
+                )}
+              </div>
             )}
 
             {movie.description && (
