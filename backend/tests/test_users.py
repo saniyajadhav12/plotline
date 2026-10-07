@@ -1,5 +1,5 @@
 def _signup_and_login(client, email="profileuser@example.com", password="password123"):
-    client.post("/auth/signup", json={"email": email, "password": password})
+    client.post("/auth/signup", json={"name": "Test User", "email": email, "password": password})
     login_response = client.post("/auth/login", json={"email": email, "password": password})
     return login_response.json()["access_token"]
 

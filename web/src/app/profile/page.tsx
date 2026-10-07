@@ -19,6 +19,7 @@ type RatingItem = {
 
 type UserMe = {
   id: string;
+  name: string | null;
   email: string;
   region_preference: string;
 };
@@ -60,7 +61,7 @@ export default async function ProfilePage() {
 
       <main className="max-w-5xl mx-auto px-8 sm:px-16 py-10">
         <h1 className="font-[family-name:var(--font-display)] text-3xl text-ink mb-1">
-          Profile
+          {user.name || "Profile"}
         </h1>
         <p className="text-silver mb-10">{user.email}</p>
 
@@ -98,9 +99,7 @@ export default async function ProfilePage() {
             ) : (
               <div className="flex flex-wrap gap-4">
                 {favoriteMovies.map((m) => (
-                  <div key={m.id} className="w-[100px]">
-                    <MovieCard {...m} />
-                  </div>
+                  <MovieCard key={m.id} {...m} />
                 ))}
               </div>
             )}
