@@ -10,6 +10,7 @@ import { parseErrorDetail } from "@/lib/errors";
 
 export default function SignupPage() {
   const router = useRouter();
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -24,7 +25,7 @@ export default function SignupPage() {
       const signupResponse = await fetch("/api/auth/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ name, email, password }),
       });
 
       if (!signupResponse.ok) {
@@ -67,6 +68,13 @@ export default function SignupPage() {
       }
     >
       <form onSubmit={handleSubmit}>
+        <FormField
+          label="Name"
+          type="text"
+          value={name}
+          onChange={setName}
+          autoComplete="name"
+        />
         <FormField
           label="Email"
           type="email"

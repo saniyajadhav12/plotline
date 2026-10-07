@@ -44,7 +44,7 @@ def signup(payload: SignupRequest, db: Session = Depends(get_db)):
     if existing:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
 
-    user = User(email=payload.email, hashed_password=hash_password(payload.password))
+    user = User(name=payload.name, email=payload.email, hashed_password=hash_password(payload.password))
     db.add(user)
     db.commit()
     db.refresh(user)
@@ -80,7 +80,14 @@ def forgot_password(payload: ForgotPasswordRequest, db: Session = Depends(get_db
 
     print(f"[DEV] Password reset token for {user.email}: {reset_token}")
 
-    return {"message": "If that email is registered, a reset link has been sent."}
+    # No real email service is configured yet, so for now the token is
+    # returned directly in the response (clearly dev-mode) rather than
+    # only printed to the server console, so the reset flow is testable
+    # end-to-end without needing access to server logs.
+    return {
+        "message": "If that email is registered, a reset link has been sent.",
+        "dev_reset_token": reset_token,
+    }
 
 
 @router.post("/reset-password", status_code=status.HTTP_200_OK)
