@@ -11,7 +11,15 @@ type Movie = {
   poster_url: string | null;
 };
 
+type Mode = "title" | "theme";
+
 export default function SearchPage() {
+  // "By plot or subject" (semantic search) is temporarily hidden from the
+  // UI while result quality is being tuned further. The tab bar and the
+  // theme-search branch below are left in place, untouched, so it can be
+  // re-enabled later by restoring the tab bar and removing this override.
+  const [mode] = useState<Mode>("title");
+
   const [query, setQuery] = useState("");
   const [genre, setGenre] = useState("");
   const [genres, setGenres] = useState<string[]>([]);
@@ -20,6 +28,12 @@ export default function SearchPage() {
   const [loading, setLoading] = useState(false);
   const requestIdRef = useRef(0);
 
+  const [themeQuery, setThemeQuery] = useState("");
+  const [themeResults, setThemeResults] = useState<Movie[]>([]);
+  const [themeLoading, setThemeLoading] = useState(false);
+  const [themeSearched, setThemeSearched] = useState(false);
+  const themeRequestIdRef = useRef(0);
+
   useEffect(() => {
     fetch("/api/movies/genres")
       .then((res) => res.json())
@@ -27,6 +41,8 @@ export default function SearchPage() {
   }, []);
 
   useEffect(() => {
+    if (mode !== "title") return;
+
     const timeout = setTimeout(() => {
       const thisRequestId = ++requestIdRef.current;
 
@@ -40,7 +56,6 @@ export default function SearchPage() {
       fetch(`/api/movies?${params.toString()}`)
         .then((res) => res.json())
         .then((data) => {
-          // Ignore stale responses from an earlier, since-superseded request
           if (thisRequestId !== requestIdRef.current) return;
           setResults(data.results);
           setTotal(data.total);
@@ -48,7 +63,33 @@ export default function SearchPage() {
         });
     }, 300);
     return () => clearTimeout(timeout);
-  }, [query, genre]);
+  }, [query, genre, mode]);
+
+  function runThemeSearch() {
+    const trimmed = themeQuery.trim();
+    if (!trimmed) {
+      setThemeResults([]);
+      setThemeSearched(false);
+      return;
+    }
+
+    const thisRequestId = ++themeRequestIdRef.current;
+    setThemeLoading(true);
+    setThemeSearched(true);
+    fetch(`/api/movies/semantic-search?q=${encodeURIComponent(trimmed)}&limit=18`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (thisRequestId !== themeRequestIdRef.current) return;
+        setThemeResults(Array.isArray(data) ? data : []);
+        setThemeLoading(false);
+      });
+  }
+
+  function handleThemeKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter") {
+      runThemeSearch();
+    }
+  }
 
   return (
     <div className="min-h-screen bg-paper">
@@ -59,60 +100,103 @@ export default function SearchPage() {
           Search
         </h1>
 
-        <div className="flex flex-col sm:flex-row gap-3 mb-8">
-          <div className="relative flex-1 max-w-md">
-            <svg
-              className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-silver"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M21 21l-4.35-4.35M17 10a7 7 0 11-14 0 7 7 0 0114 0z"
-              />
-            </svg>
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search by title…"
-              className="w-full border border-ink/20 bg-paper pl-10 pr-3 py-2.5 text-ink placeholder:text-silver focus:outline-none focus:border-marquee transition-colors"
-            />
-          </div>
+        {mode === "title" ? (
+          <>
+            <div className="flex flex-col sm:flex-row gap-3 mb-8">
+              <div className="relative flex-1 max-w-md">
+                <svg
+                  className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-silver"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M21 21l-4.35-4.35M17 10a7 7 0 11-14 0 7 7 0 0114 0z"
+                  />
+                </svg>
+                <input
+                  type="text"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search by title…"
+                  className="w-full border border-ink/20 bg-paper pl-10 pr-3 py-2.5 text-ink placeholder:text-silver focus:outline-none focus:border-marquee transition-colors"
+                />
+              </div>
 
-          <select
-            value={genre}
-            onChange={(e) => setGenre(e.target.value)}
-            className="border border-ink/20 bg-paper px-3 py-2.5 text-ink focus:outline-none focus:border-marquee transition-colors"
-          >
-            <option value="">All genres</option>
-            {genres.map((g) => (
-              <option key={g} value={g}>
-                {g}
-              </option>
-            ))}
-          </select>
-        </div>
+              <select
+                value={genre}
+                onChange={(e) => setGenre(e.target.value)}
+                className="border border-ink/20 bg-paper px-3 py-2.5 text-ink focus:outline-none focus:border-marquee transition-colors"
+              >
+                <option value="">All genres</option>
+                {genres.map((g) => (
+                  <option key={g} value={g}>
+                    {g}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-        {!loading && (query || genre) && (
-          <p className="text-silver text-sm mb-6">{total} results</p>
-        )}
+            {!loading && (query || genre) && (
+              <p className="text-silver text-sm mb-6">{total} results</p>
+            )}
 
-        {loading ? (
-          <p className="text-silver">Loading…</p>
-        ) : results.length === 0 ? (
-          <p className="text-silver">
-            {query || genre ? "No movies found." : "Start typing to search, or pick a genre."}
-          </p>
+            {loading ? (
+              <p className="text-silver">Loading…</p>
+            ) : results.length === 0 ? (
+              <p className="text-silver">
+                {query || genre ? "No movies found." : "Start typing to search, or pick a genre."}
+              </p>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-6">
+                {results.map((movie) => (
+                  <MovieCard key={movie.id} {...movie} />
+                ))}
+              </div>
+            )}
+          </>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-6">
-            {results.map((movie) => (
-              <MovieCard key={movie.id} {...movie} />
-            ))}
-          </div>
+          <>
+            <div className="flex flex-col sm:flex-row gap-3 mb-3 max-w-xl">
+              <input
+                type="text"
+                value={themeQuery}
+                onChange={(e) => setThemeQuery(e.target.value)}
+                onKeyDown={handleThemeKeyDown}
+                placeholder="e.g. space exploration and astronauts, heist gone wrong, war-time survival…"
+                className="flex-1 border border-ink/20 bg-paper px-3 py-2.5 text-ink placeholder:text-silver focus:outline-none focus:border-marquee transition-colors"
+              />
+              <button
+                onClick={runThemeSearch}
+                disabled={themeLoading || !themeQuery.trim()}
+                className="bg-ink text-paper px-5 py-2.5 text-sm font-medium hover:bg-marquee transition-colors disabled:opacity-50 whitespace-nowrap"
+              >
+                {themeLoading ? "Searching…" : "Search"}
+              </button>
+            </div>
+            <p className="text-silver text-sm mb-8">
+              Finds movies by plot, setting, or subject matter — not exact wording.
+              Works best for concrete themes (e.g. a time period, profession, or
+              event) rather than mood or tone. Press Enter or click Search to run it.
+            </p>
+
+            {themeLoading ? (
+              <p className="text-silver">Searching…</p>
+            ) : themeResults.length === 0 ? (
+              <p className="text-silver">
+                {themeSearched ? "No matches found." : "Describe a plot, setting, or subject, then search."}
+              </p>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-6">
+                {themeResults.map((movie) => (
+                  <MovieCard key={movie.id} {...movie} />
+                ))}
+              </div>
+            )}
+          </>
         )}
       </main>
     </div>

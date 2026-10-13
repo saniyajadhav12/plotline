@@ -14,8 +14,36 @@ from app.schemas.movie import (
     CastCrewResponse,
     WatchProviderResponse,
 )
+from app.services.embedding_model import get_embedding_model
 
 router = APIRouter(prefix="/movies", tags=["movies"])
+
+
+@router.get("/semantic-search", response_model=list[MovieListItem])
+def semantic_search(
+    q: str = Query(..., min_length=1, description="Natural-language description of what you're looking for"),
+    limit: int = Query(default=12, ge=1, le=50),
+    db: Session = Depends(get_db),
+):
+    """
+    Finds movies by semantic meaning rather than exact title/keyword
+    match, using local sentence embeddings + pgvector cosine distance.
+    E.g. "mind-bending sci-fi with a twist ending" surfaces thematically
+    similar movies even if none of those words appear in their titles
+    or descriptions.
+    """
+    model = get_embedding_model()
+    query_embedding = model.encode(q).tolist()
+
+    results = (
+        db.query(Movie)
+        .filter(Movie.embedding.isnot(None))
+        .order_by(Movie.embedding.cosine_distance(query_embedding))
+        .limit(limit)
+        .all()
+    )
+
+    return [MovieListItem.model_validate(m) for m in results]
 
 
 @router.get("/genres", response_model=list[str])
