@@ -14,7 +14,11 @@ type Movie = {
 type Mode = "title" | "theme";
 
 export default function SearchPage() {
-  const [mode, setMode] = useState<Mode>("title");
+  // "By plot or subject" (semantic search) is temporarily hidden from the
+  // UI while result quality is being tuned further. The tab bar and the
+  // theme-search branch below are left in place, untouched, so it can be
+  // re-enabled later by restoring the tab bar and removing this override.
+  const [mode] = useState<Mode>("title");
 
   const [query, setQuery] = useState("");
   const [genre, setGenre] = useState("");
@@ -27,6 +31,7 @@ export default function SearchPage() {
   const [themeQuery, setThemeQuery] = useState("");
   const [themeResults, setThemeResults] = useState<Movie[]>([]);
   const [themeLoading, setThemeLoading] = useState(false);
+  const [themeSearched, setThemeSearched] = useState(false);
   const themeRequestIdRef = useRef(0);
 
   useEffect(() => {
@@ -60,26 +65,31 @@ export default function SearchPage() {
     return () => clearTimeout(timeout);
   }, [query, genre, mode]);
 
-  useEffect(() => {
-    if (mode !== "theme") return;
-    if (!themeQuery.trim()) {
+  function runThemeSearch() {
+    const trimmed = themeQuery.trim();
+    if (!trimmed) {
       setThemeResults([]);
+      setThemeSearched(false);
       return;
     }
 
-    const timeout = setTimeout(() => {
-      const thisRequestId = ++themeRequestIdRef.current;
-      setThemeLoading(true);
-      fetch(`/api/movies/semantic-search?q=${encodeURIComponent(themeQuery.trim())}&limit=18`)
-        .then((res) => res.json())
-        .then((data) => {
-          if (thisRequestId !== themeRequestIdRef.current) return;
-          setThemeResults(Array.isArray(data) ? data : []);
-          setThemeLoading(false);
-        });
-    }, 500);
-    return () => clearTimeout(timeout);
-  }, [themeQuery, mode]);
+    const thisRequestId = ++themeRequestIdRef.current;
+    setThemeLoading(true);
+    setThemeSearched(true);
+    fetch(`/api/movies/semantic-search?q=${encodeURIComponent(trimmed)}&limit=18`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (thisRequestId !== themeRequestIdRef.current) return;
+        setThemeResults(Array.isArray(data) ? data : []);
+        setThemeLoading(false);
+      });
+  }
+
+  function handleThemeKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter") {
+      runThemeSearch();
+    }
+  }
 
   return (
     <div className="min-h-screen bg-paper">
@@ -89,29 +99,6 @@ export default function SearchPage() {
         <h1 className="font-[family-name:var(--font-display)] text-3xl text-ink mb-6">
           Search
         </h1>
-
-        <div className="flex gap-6 mb-6 border-b border-ink/10">
-          <button
-            onClick={() => setMode("title")}
-            className={`pb-3 text-sm transition-colors border-b-2 -mb-px ${
-              mode === "title"
-                ? "text-ink border-marquee font-medium"
-                : "text-silver border-transparent hover:text-ink"
-            }`}
-          >
-            By title
-          </button>
-          <button
-            onClick={() => setMode("theme")}
-            className={`pb-3 text-sm transition-colors border-b-2 -mb-px ${
-              mode === "theme"
-                ? "text-ink border-marquee font-medium"
-                : "text-silver border-transparent hover:text-ink"
-            }`}
-          >
-            By plot or subject
-          </button>
-        </div>
 
         {mode === "title" ? (
           <>
@@ -173,26 +160,34 @@ export default function SearchPage() {
           </>
         ) : (
           <>
-            <div className="mb-3 max-w-xl">
+            <div className="flex flex-col sm:flex-row gap-3 mb-3 max-w-xl">
               <input
                 type="text"
                 value={themeQuery}
                 onChange={(e) => setThemeQuery(e.target.value)}
+                onKeyDown={handleThemeKeyDown}
                 placeholder="e.g. space exploration and astronauts, heist gone wrong, war-time survival…"
-                className="w-full border border-ink/20 bg-paper px-3 py-2.5 text-ink placeholder:text-silver focus:outline-none focus:border-marquee transition-colors"
+                className="flex-1 border border-ink/20 bg-paper px-3 py-2.5 text-ink placeholder:text-silver focus:outline-none focus:border-marquee transition-colors"
               />
+              <button
+                onClick={runThemeSearch}
+                disabled={themeLoading || !themeQuery.trim()}
+                className="bg-ink text-paper px-5 py-2.5 text-sm font-medium hover:bg-marquee transition-colors disabled:opacity-50 whitespace-nowrap"
+              >
+                {themeLoading ? "Searching…" : "Search"}
+              </button>
             </div>
             <p className="text-silver text-sm mb-8">
               Finds movies by plot, setting, or subject matter — not exact wording.
               Works best for concrete themes (e.g. a time period, profession, or
-              event) rather than mood or tone.
+              event) rather than mood or tone. Press Enter or click Search to run it.
             </p>
 
             {themeLoading ? (
               <p className="text-silver">Searching…</p>
             ) : themeResults.length === 0 ? (
               <p className="text-silver">
-                {themeQuery.trim() ? "No matches found." : "Describe a plot, setting, or subject to search."}
+                {themeSearched ? "No matches found." : "Describe a plot, setting, or subject, then search."}
               </p>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-6">
