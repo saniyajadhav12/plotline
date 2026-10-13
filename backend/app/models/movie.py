@@ -22,5 +22,5 @@ class Movie(Base):
     popularity_score = Column(Float, nullable=True, index=True)
     tmdb_vote_average = Column(Float, nullable=True)
     tmdb_vote_count = Column(Integer, nullable=True)
-    embedding = Column(Vector(384), nullable=True)
+    embedding = Column(Vector(768), nullable=True)
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
