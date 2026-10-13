@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getToken, clearToken } from "@/lib/session";
+import { getToken } from "@/lib/session";
 import { backendFetch, ApiError } from "@/lib/api";
 
 /**
@@ -29,8 +29,12 @@ export async function backendFetchOrRedirect<T>(
     return await backendFetch<T>(path, { ...options, token });
   } catch (error) {
     if (error instanceof ApiError && error.status === 401) {
-      await clearToken();
-      redirect("/login");
+      // Cookies can only be written in a Server Action or Route Handler,
+      // not during a Server Component's render -- so we don't try to
+      // clear the stale cookie here. It's harmless: every subsequent
+      // request still gets rejected with 401, and the user is redirected
+      // to /login either way. The login page itself clears it if present.
+      redirect("/login?session_expired=1");
     }
     throw error;
   }
