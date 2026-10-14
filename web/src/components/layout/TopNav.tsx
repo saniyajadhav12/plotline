@@ -19,11 +19,53 @@ export function TopNav() {
   const [showConfirm, setShowConfirm] = useState(false);
 
   useEffect(() => {
-    fetch("/api/auth/me")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => setName(data?.name ?? null))
-      .catch(() => setName(null));
-  }, []);
+    let cancelled = false;
+    let expiryTimer: ReturnType<typeof setTimeout> | undefined;
+
+    // Loads the user's name, and sends them to /login if their session is gone.
+    // Only a 401 redirects; a backend outage or network error leaves them in place.
+    async function checkSession() {
+      try {
+        const res = await fetch("/api/auth/me", { cache: "no-store" });
+        if (cancelled) return;
+        if (res.ok) {
+          const data = await res.json();
+          if (cancelled) return;
+          setName(data?.name ?? null);
+          // Re-check the moment the session ends, so the user is sent to /login
+          // automatically, without having to click or refresh.
+          clearTimeout(expiryTimer);
+          if (typeof data?.session_expires_at === "number") {
+            const delay = Math.max(0, data.session_expires_at - Date.now()) + 1000;
+            expiryTimer = setTimeout(checkSession, Math.min(delay, 2 ** 31 - 1));
+          }
+          return;
+        }
+        if (res.status === 401) {
+          const data = await res.json().catch(() => ({}));
+          if (cancelled) return;
+          router.replace(data?.reason === "session_expired" ? "/login?session_expired=1" : "/login");
+        }
+      } catch {
+        // Network error: stay on the page.
+      }
+    }
+
+    checkSession();
+
+    // Re-check when the user comes back to this tab, so a session that ran out
+    // in the background is caught immediately.
+    function onVisibilityChange() {
+      if (document.visibilityState === "visible") checkSession();
+    }
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(expiryTimer);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, [router]);
 
   async function handleLogout() {
     await fetch("/api/auth/logout", { method: "POST" });

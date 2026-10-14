@@ -1,15 +1,19 @@
 import { redirect } from "next/navigation";
-import { getToken } from "@/lib/session";
+import { getToken, isTokenExpired } from "@/lib/session";
 import { backendFetch, ApiError } from "@/lib/api";
 
 /**
- * Gets the auth token from the cookie, or redirects to /login if missing.
+ * Gets the auth token from the cookie, or redirects to /login if it is missing,
+ * or to /login?session_expired=1 if the token inside it has expired.
  * Use at the top of any Server Component page that requires authentication.
  */
 export async function requireToken(): Promise<string> {
   const token = await getToken();
   if (!token) {
     redirect("/login");
+  }
+  if (isTokenExpired(token)) {
+    redirect("/login?session_expired=1");
   }
   return token;
 }
