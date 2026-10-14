@@ -144,11 +144,11 @@ export function PasswordForm() {
           </button>
         </div>
         {error && <p className="text-marquee text-sm mb-3">{error}</p>}
-        {message && <p className="text-sm mb-3" style={{ color: "#2B3A42" }}>{message}</p>}
+        {message && <p className="text-sm mb-3 text-ink">{message}</p>}
         <button
           type="submit"
           disabled={loading}
-          className="bg-marquee text-paper px-5 py-2.5 text-sm font-medium hover:bg-marquee/90 transition-colors disabled:opacity-50"
+          className="bg-marquee text-cream px-5 py-2.5 text-sm font-medium hover:bg-marquee/90 transition-colors disabled:opacity-50"
         >
           {loading ? "Saving…" : "Change Password"}
         </button>
@@ -193,7 +193,7 @@ export function PasswordForm() {
               <button
                 type="submit"
                 disabled={forgotLoading}
-                className="bg-marquee text-paper px-4 py-2 text-sm hover:bg-marquee/90 transition-colors disabled:opacity-50"
+                className="bg-marquee text-cream px-4 py-2 text-sm hover:bg-marquee/90 transition-colors disabled:opacity-50"
               >
                 {forgotLoading ? "Resetting…" : "Reset password"}
               </button>
@@ -202,7 +202,7 @@ export function PasswordForm() {
 
           {forgotError && <p className="text-marquee text-sm mt-3">{forgotError}</p>}
           {forgotMessage && (
-            <p className="text-sm mt-3" style={{ color: "#2B3A42" }}>{forgotMessage}</p>
+            <p className="text-sm mt-3 text-ink">{forgotMessage}</p>
           )}
         </div>
       )}

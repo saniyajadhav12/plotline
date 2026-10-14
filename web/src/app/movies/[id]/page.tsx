@@ -96,7 +96,7 @@ export default async function MovieDetailPage({
                 className="object-cover"
               />
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-paper p-4 text-center">
+              <div className="w-full h-full flex items-center justify-center text-cream p-4 text-center">
                 {movie.title}
               </div>
             )}
@@ -150,8 +150,8 @@ export default async function MovieDetailPage({
             )}
 
             {matchingRecommendation?.explanation_text && (
-              <div className="bg-film text-paper p-5 mb-6 max-w-xl">
-                <p className="text-xs uppercase tracking-wide text-paper/60 mb-2">
+              <div className="bg-film text-cream p-5 mb-6 max-w-xl">
+                <p className="text-xs uppercase tracking-wide text-cream/60 mb-2">
                   Why this was recommended
                 </p>
                 <p className="leading-relaxed">

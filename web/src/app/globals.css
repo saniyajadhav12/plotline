@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Enables dark: utilities, driven by the "dark" class next-themes puts on <html>. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --color-ink: #151316;
   --color-paper: #F7F4EE;
@@ -8,8 +11,33 @@
   --color-silver: #8C8780;
   --color-gold: #B9975B;
 
+  /* Fixed colors that do NOT change between themes. Use these for areas that
+     are dark in both themes (e.g. the hero banner) so their text stays light. */
+  --color-night: #151316;
+  --color-cream: #F7F4EE;
+
   --font-display: var(--font-fraunces), serif;
   --font-body: var(--font-inter), sans-serif;
+}
+
+/* Dark theme: same token names, new values. Every bg-paper / text-ink / etc.
+   switches automatically because Tailwind v4 utilities reference these variables. */
+.dark {
+  --color-ink: #EDE8DF;
+  --color-paper: #141215;
+  --color-marquee: #D9583A;
+  --color-film: #22303A;
+  --color-silver: #A39D94;
+  --color-gold: #CDAE72;
+}
+
+/* Tells the browser which scheme is active, so native scrollbars,
+   form inputs and autofill match the theme. */
+:root {
+  color-scheme: light;
+}
+.dark {
+  color-scheme: dark;
 }
 
 body {

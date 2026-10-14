@@ -24,7 +24,7 @@ export function MovieCard({ id, title, year, poster_url, recommendationId }: Mov
             className="object-cover"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-paper text-xs p-2 text-center">
+          <div className="w-full h-full flex items-center justify-center text-cream text-xs p-2 text-center">
             {title}
           </div>
         )}

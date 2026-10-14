@@ -228,13 +228,13 @@ export function OnboardingForm({
                       className="object-cover"
                     />
                   ) : (
-                    <div className="w-full h-full bg-film flex items-center justify-center text-paper text-xs p-2 text-center">
+                    <div className="w-full h-full bg-film flex items-center justify-center text-cream text-xs p-2 text-center">
                       {movie.title}
                     </div>
                   )}
                   {isSelected && (
                     <div className="absolute inset-0 bg-marquee/20 flex items-center justify-center">
-                      <span className="text-paper text-2xl">✓</span>
+                      <span className="text-cream text-2xl">✓</span>
                     </div>
                   )}
                 </button>
@@ -245,7 +245,7 @@ export function OnboardingForm({
       </section>
 
       {error && <p className="text-marquee text-sm mb-4">{error}</p>}
-      {message && <p className="text-sm mb-4" style={{ color: "#2B3A42" }}>{message}</p>}
+      {message && <p className="text-sm mb-4 text-ink">{message}</p>}
 
       <button
         type="button"
