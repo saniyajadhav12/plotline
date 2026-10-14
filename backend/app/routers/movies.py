@@ -129,11 +129,7 @@ def get_movie_detail(
     )
     watch_providers = [WatchProviderResponse.model_validate(p) for p in providers]
 
-    avg_rating = (
-        db.query(func.avg(Rating.rating_value))
-        .filter(Rating.movie_id == movie_id)
-        .scalar()
-    )
+    avg_rating = movie.avg_rating
 
     return MovieDetailResponse(
         id=movie.id,

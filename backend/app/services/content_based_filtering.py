@@ -59,10 +59,16 @@ def build_movie_profiles(db: Session) -> pd.DataFrame:
     return df
 
 
+def build_tfidf_matrix(movie_profiles: pd.DataFrame):
+    """Sparse TF-IDF matrix, one L2-normalized row per movie, in movie_profiles.index order.
+    Shared by the live code and the offline neighbor builder so both use identical features."""
+    vectorizer = TfidfVectorizer(stop_words="english", max_features=5000)
+    return vectorizer.fit_transform(movie_profiles["profile_text"])
+
+
 def compute_content_similarity(movie_profiles: pd.DataFrame) -> pd.DataFrame:
     """Returns a movie x movie cosine similarity DataFrame based on TF-IDF content vectors."""
-    vectorizer = TfidfVectorizer(stop_words="english", max_features=5000)
-    tfidf_matrix = vectorizer.fit_transform(movie_profiles["profile_text"])
+    tfidf_matrix = build_tfidf_matrix(movie_profiles)
     similarity = cosine_similarity(tfidf_matrix)
     return pd.DataFrame(similarity, index=movie_profiles.index, columns=movie_profiles.index)
 
