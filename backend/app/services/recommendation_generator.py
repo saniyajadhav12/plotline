@@ -1,6 +1,6 @@
 """
 Generates and persists hybrid recommendations for a single user,
-using the shared cached catalog-wide matrices. This is the reusable
+using precomputed movie_neighbors rows. This is the reusable
 core used by both the demo batch script and the automatic triggers
 (onboarding save, Nth rating).
 """
@@ -9,11 +9,9 @@ import uuid
 from sqlalchemy.orm import Session
 
 from app.models import Movie, RecommendationLog
-from app.services.collaborative_filtering import recommend_cf
-from app.services.content_based_filtering import recommend_content_based
 from app.services.hybrid_recommender import compute_hybrid_scores, determine_primary_method
 from app.services.explanation_generator import generate_explanation
-from app.services.recommendation_cache import get_cached_matrices
+from app.services.neighbor_recommender import recommend_cf_from_neighbors, recommend_content_from_neighbors
 
 RECS_PER_USER = 10
 
@@ -25,10 +23,8 @@ def generate_recommendations_for_user(user_id: uuid.UUID, db: Session, with_expl
     was available at all — a true cold-start user with no ratings
     and no onboarding data).
     """
-    ratings_matrix, item_sim, content_sim = get_cached_matrices()
-
-    cf_scores = recommend_cf(user_id, ratings_matrix, item_sim, top_n=50)
-    content_scores = recommend_content_based(user_id, db, content_sim, top_n=50)
+    cf_scores = recommend_cf_from_neighbors(user_id, db, top_n=50)
+    content_scores = recommend_content_from_neighbors(user_id, db, top_n=50)
 
     if not cf_scores and not content_scores:
         return 0

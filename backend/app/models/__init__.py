@@ -7,6 +7,7 @@ from app.models.rating import Rating
 from app.models.watchlist import Watchlist
 from app.models.onboarding_preference import OnboardingPreference
 from app.models.recommendation_log import RecommendationLog
+from app.models.movie_neighbor import MovieNeighbor
 
 __all__ = [
     "User",
@@ -18,4 +19,5 @@ __all__ = [
     "Watchlist",
     "OnboardingPreference",
     "RecommendationLog",
+    "MovieNeighbor",
 ]

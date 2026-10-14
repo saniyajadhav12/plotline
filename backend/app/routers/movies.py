@@ -6,7 +6,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.models import Movie, CastCrew, WatchProvider, Rating
+from app.models import Movie, CastCrew, WatchProvider
 from app.schemas.movie import (
     MovieListResponse,
     MovieListItem,
@@ -129,11 +129,7 @@ def get_movie_detail(
     )
     watch_providers = [WatchProviderResponse.model_validate(p) for p in providers]
 
-    avg_rating = (
-        db.query(func.avg(Rating.rating_value))
-        .filter(Rating.movie_id == movie_id)
-        .scalar()
-    )
+    avg_rating = movie.avg_rating
 
     return MovieDetailResponse(
         id=movie.id,
