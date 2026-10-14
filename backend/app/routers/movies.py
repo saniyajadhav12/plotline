@@ -6,7 +6,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.models import Movie, CastCrew, WatchProvider, Rating
+from app.models import Movie, CastCrew, WatchProvider
 from app.schemas.movie import (
     MovieListResponse,
     MovieListItem,
