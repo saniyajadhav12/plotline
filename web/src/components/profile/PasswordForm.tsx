@@ -134,19 +134,21 @@ export function PasswordForm() {
             className="w-full border border-ink/20 bg-paper px-3 py-2.5 text-ink focus:outline-none focus:border-marquee transition-colors"
           />
         </div>
-        <button
-          type="button"
-          onClick={() => setShowForgot(!showForgot)}
-          className="text-xs text-silver underline hover:text-ink transition-colors mb-4"
-        >
-          Forgot your current password?
-        </button>
+        <div className="mb-4">
+          <button
+            type="button"
+            onClick={() => setShowForgot(!showForgot)}
+            className="text-xs text-silver underline hover:text-ink transition-colors"
+          >
+            Forgot your current password?
+          </button>
+        </div>
         {error && <p className="text-marquee text-sm mb-3">{error}</p>}
         {message && <p className="text-sm mb-3" style={{ color: "#2B3A42" }}>{message}</p>}
         <button
           type="submit"
           disabled={loading}
-          className="bg-ink text-paper px-5 py-2.5 text-sm font-medium hover:bg-marquee transition-colors disabled:opacity-50"
+          className="bg-marquee text-paper px-5 py-2.5 text-sm font-medium hover:bg-marquee/90 transition-colors disabled:opacity-50"
         >
           {loading ? "Saving…" : "Change Password"}
         </button>
@@ -191,7 +193,7 @@ export function PasswordForm() {
               <button
                 type="submit"
                 disabled={forgotLoading}
-                className="bg-ink text-paper px-4 py-2 text-sm hover:bg-marquee transition-colors disabled:opacity-50"
+                className="bg-marquee text-paper px-4 py-2 text-sm hover:bg-marquee/90 transition-colors disabled:opacity-50"
               >
                 {forgotLoading ? "Resetting…" : "Reset password"}
               </button>
