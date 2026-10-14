@@ -55,21 +55,21 @@ export function HeroBanner({
 
         <div className="flex-1">
           <p className="text-gold text-xs tracking-wide uppercase mb-3">{eyebrow}</p>
-          <h1 className="font-[family-name:var(--font-display)] text-3xl sm:text-4xl text-paper mb-2">
+          <h1 className="font-[family-name:var(--font-display)] text-3xl sm:text-4xl text-cream mb-2">
             {title}
           </h1>
-          <p className="text-paper/70 text-sm mb-4">
+          <p className="text-cream/70 text-sm mb-4">
             {year}
             {genres && genres.length > 0 && <> · {genres.slice(0, 3).join(", ")}</>}
           </p>
           {description && (
-            <p className="text-paper/80 text-sm max-w-xl mb-6 line-clamp-3">
+            <p className="text-cream/80 text-sm max-w-xl mb-6 line-clamp-3">
               {description}
             </p>
           )}
           <Link
             href={href}
-            className="inline-block bg-marquee text-paper px-5 py-2.5 text-sm font-medium hover:bg-marquee/90 transition-colors"
+            className="inline-block bg-marquee text-cream px-5 py-2.5 text-sm font-medium hover:bg-marquee/90 transition-colors"
           >
             View Details
           </Link>

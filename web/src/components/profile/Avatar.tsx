@@ -17,7 +17,7 @@ export function Avatar({ name }: { name: string }) {
       className="w-16 h-16 rounded-full flex items-center justify-center flex-shrink-0"
       style={{ backgroundColor: bgColor }}
     >
-      <span className="font-[family-name:var(--font-display)] text-2xl text-paper">
+      <span className="font-[family-name:var(--font-display)] text-2xl text-cream">
         {initial}
       </span>
     </div>

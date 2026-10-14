@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { ThemeToggle } from "@/components/theme/ThemeToggle";
 
 const links = [
   { href: "/", label: "Home" },
@@ -58,6 +59,7 @@ export function TopNav() {
           {name && (
             <span className="text-sm text-ink font-medium">Hi, {name}</span>
           )}
+          <ThemeToggle />
           <button
             onClick={() => setShowConfirm(true)}
             className="text-sm text-silver hover:text-marquee transition-colors"
@@ -68,7 +70,7 @@ export function TopNav() {
       </div>
 
       {showConfirm && (
-        <div className="fixed inset-0 bg-ink/40 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-night/50 flex items-center justify-center z-50">
           <div className="bg-paper border border-ink/10 shadow-lg max-w-sm w-full mx-4 p-6">
             <h2 className="font-[family-name:var(--font-display)] text-xl text-ink mb-2">
               Sign out?
@@ -85,7 +87,7 @@ export function TopNav() {
               </button>
               <button
                 onClick={handleLogout}
-                className="text-sm px-4 py-2 bg-marquee text-paper hover:bg-marquee/90 transition-colors"
+                className="text-sm px-4 py-2 bg-marquee text-cream hover:bg-marquee/90 transition-colors"
               >
                 Sign out
               </button>
