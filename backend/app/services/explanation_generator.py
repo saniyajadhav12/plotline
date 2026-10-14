@@ -1,7 +1,16 @@
 """
 Generates AI-powered, plain-English "why this was recommended"
 explanations using Gemini, based on the hybrid scoring breakdown.
+
+Gemini is treated as an optional enhancement, never a dependency:
+  - fallback_explanation() is instant and always available.
+  - try_gemini_explanation() returns None instead of raising or blocking.
+  - A simple circuit breaker stops calling Gemini entirely after a quota
+    (429) error, for as long as the API says to wait, so a used-up free
+    tier costs zero time instead of 3 retries per movie.
 """
+import re
+import threading
 import time
 import uuid
 
@@ -12,6 +21,34 @@ from app.core.config import settings
 from app.models import Movie, Rating, CastCrew
 
 _client = genai.Client(api_key=settings.gemini_api_key)
+
+GEMINI_MODEL = "gemini-3.8-flash"
+DEFAULT_COOLDOWN_SECONDS = 60          # when a 429 doesn't say how long to wait
+MAX_COOLDOWN_SECONDS = 24 * 60 * 60    # never back off longer than a day
+
+_circuit_lock = threading.Lock()
+_gemini_disabled_until = 0.0
+_RETRY_DELAY_RE = re.compile(r"retryDelay'?\s*:\s*'(\d+)s'")
+
+
+def gemini_available() -> bool:
+    """False while the circuit breaker is open (recent quota error)."""
+    return time.time() >= _gemini_disabled_until
+
+
+def _open_circuit(error_text: str) -> None:
+    """Stop calling Gemini for as long as the 429 response asks."""
+    global _gemini_disabled_until
+    match = _RETRY_DELAY_RE.search(error_text)
+    cooldown = int(match.group(1)) if match else DEFAULT_COOLDOWN_SECONDS
+    cooldown = max(1, min(cooldown, MAX_COOLDOWN_SECONDS))
+    with _circuit_lock:
+        _gemini_disabled_until = max(_gemini_disabled_until, time.time() + cooldown)
+    print(f"  [Gemini] quota exhausted; skipping Gemini for {cooldown}s (templated explanations meanwhile)")
+
+
+def _is_quota_error(error_text: str) -> bool:
+    return "429" in error_text or "RESOURCE_EXHAUSTED" in error_text
 
 
 def _get_signal_context(user_id: uuid.UUID, movie: Movie, breakdown: dict, db: Session) -> str:
@@ -45,9 +82,25 @@ def _get_signal_context(user_id: uuid.UUID, movie: Movie, breakdown: dict, db: S
     return " ".join(parts) if parts else "This movie matches the user's general viewing patterns."
 
 
-def generate_explanation(user_id: uuid.UUID, movie: Movie, breakdown: dict, db: Session, max_retries: int = 3) -> str:
+def fallback_explanation(user_id: uuid.UUID, movie: Movie, breakdown: dict, db: Session) -> str:
+    """Instant templated explanation; no network calls."""
     context = _get_signal_context(user_id, movie, breakdown, db)
+    return f"Recommended based on your viewing history and preferences. {context}"
 
+
+def try_gemini_explanation(
+    user_id: uuid.UUID, movie: Movie, breakdown: dict, db: Session, max_retries: int = 3
+) -> str | None:
+    """
+    Returns a Gemini-written explanation, or None if Gemini is unavailable.
+    - Circuit open (recent quota error): returns None immediately.
+    - Quota error (429): opens the circuit and returns None without retrying.
+    - Other errors (e.g. 503 high demand): retries with backoff, then None.
+    """
+    if not gemini_available():
+        return None
+
+    context = _get_signal_context(user_id, movie, breakdown, db)
     prompt = (
         f"You are writing a short, friendly 'Why this was recommended' explanation "
         f"for a movie recommendation app. Write ONE or TWO sentences, in plain "
@@ -59,17 +112,25 @@ def generate_explanation(user_id: uuid.UUID, movie: Movie, breakdown: dict, db: 
 
     for attempt in range(1, max_retries + 1):
         try:
-            response = _client.models.generate_content(
-                model="gemini-3.8-flash",
-                contents=prompt,
-            )
-            return response.text.strip()
+            response = _client.models.generate_content(model=GEMINI_MODEL, contents=prompt)
+            text = (response.text or "").strip()
+            return text or None
         except Exception as e:
-            print(f"  [Gemini] attempt {attempt}/{max_retries} failed: {e}")
+            error_text = str(e)
+            if _is_quota_error(error_text):
+                _open_circuit(error_text)
+                return None
+            print(f"  [Gemini] attempt {attempt}/{max_retries} failed: {error_text[:200]}")
             if attempt < max_retries:
                 time.sleep(2 * attempt)
 
-    # All retries exhausted: fall back to a simple templated explanation
-    # rather than failing the whole batch over one flaky API call.
-    print("  [Gemini] all retries failed, using fallback explanation")
-    return f"Recommended based on your viewing history and preferences. {context}"
+    return None
+
+
+def generate_explanation(user_id: uuid.UUID, movie: Movie, breakdown: dict, db: Session, max_retries: int = 3) -> str:
+    """Gemini explanation if available, otherwise the templated fallback.
+    Kept for callers that want a single blocking call (e.g. batch scripts)."""
+    return (
+        try_gemini_explanation(user_id, movie, breakdown, db, max_retries=max_retries)
+        or fallback_explanation(user_id, movie, breakdown, db)
+    )

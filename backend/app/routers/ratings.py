@@ -4,29 +4,32 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
-from app.core.database import get_db, SessionLocal
+from app.core.database import get_db
 from app.models import Movie, Rating, User
 from app.routers.auth import get_current_user
 from app.schemas.movie import MovieListItem
 from app.schemas.rating import RateMovieRequest, RatingResponse, RatingWithMovieResponse
-from app.services.recommendation_generator import generate_recommendations_for_user
+from app.services.recommendation_generator import save_recommendations_for_user, upgrade_explanations_background
 
 router = APIRouter(tags=["ratings"])
 
 MIN_RATINGS_FOR_RECOMMENDATIONS = 3
 
 
-def _generate_recommendations_background(user_id):
-    """Runs in a background task after the HTTP response is sent.
-    Opens its own DB session since the request-scoped one is closed by then."""
-    db = SessionLocal()
+def _refresh_recommendations(user_id, db: Session, background_tasks: BackgroundTasks) -> None:
+    """Saves fresh recommendations BEFORE the response is sent (fast: scoring plus
+    templated explanations), so the next page load already has them. Only the
+    slow Gemini explanation upgrade is queued as a background task. A failure
+    here is logged but never fails the rating request itself."""
     try:
-        count = generate_recommendations_for_user(user_id, db)
-        print(f"[background] Generated {count} recommendations for user {user_id} after rating")
+        pending = save_recommendations_for_user(user_id, db)
+        print(f"[recommendations] Saved {len(pending)} recommendations for user {user_id} after rating")
     except Exception as e:
-        print(f"[background] Failed to generate recommendations for user {user_id}: {e}")
-    finally:
-        db.close()
+        db.rollback()
+        print(f"[recommendations] Failed to generate recommendations for user {user_id}: {e}")
+        return
+    if pending:
+        background_tasks.add_task(upgrade_explanations_background, user_id, pending)
 
 
 @router.post("/movies/{movie_id}/ratings", response_model=RatingResponse, status_code=status.HTTP_201_CREATED)
@@ -57,7 +60,7 @@ def rate_movie(
 
     rating_count = db.query(Rating).filter(Rating.user_id == current_user.id).count()
     if rating_count >= MIN_RATINGS_FOR_RECOMMENDATIONS:
-        background_tasks.add_task(_generate_recommendations_background, current_user.id)
+        _refresh_recommendations(current_user.id, db, background_tasks)
 
     return RatingResponse(
         id=rating_obj.id,
