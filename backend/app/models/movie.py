@@ -22,6 +22,7 @@ class Movie(Base):
     popularity_score = Column(Float, nullable=True, index=True)
     tmdb_vote_average = Column(Float, nullable=True)
     tmdb_vote_count = Column(Integer, nullable=True)
+    original_language = Column(String(10), nullable=True, index=True)  # ISO 639-1, e.g. 'en', 'hi', 'ko'
     avg_rating = Column(Float, nullable=True)
     rating_count = Column(Integer, nullable=False, server_default="0")
     embedding = Column(Vector(768), nullable=True)

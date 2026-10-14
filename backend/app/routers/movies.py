@@ -136,6 +136,7 @@ def get_movie_detail(
         title=movie.title,
         year=movie.year,
         genres=movie.genres,
+        original_language=movie.original_language,
         description=movie.description,
         poster_url=movie.poster_url,
         average_rating=round(float(avg_rating), 2) if avg_rating else None,

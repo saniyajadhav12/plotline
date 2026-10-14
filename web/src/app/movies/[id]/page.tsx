@@ -20,6 +20,7 @@ type MovieDetail = {
   id: string;
   title: string;
   year: number | null;
+  original_language?: string | null;
   genres: string[] | null;
   description: string | null;
   poster_url: string | null;
@@ -44,6 +45,26 @@ type UserMe = {
 type WatchlistItem = {
   movie: { id: string };
 };
+
+// TMDb uses a few non-standard language codes: "cn" is Cantonese, and "xx"
+// means no spoken language (e.g. silent films), which we don't display.
+const TMDB_LANGUAGE_OVERRIDES: Record<string, string | null> = { cn: "Cantonese", xx: null };
+
+/** " · Hindi" for "hi", or "" when the language is missing or unknown. */
+function languageSuffix(code: string | null | undefined): string {
+  if (!code) return "";
+  const key = code.toLowerCase();
+  if (key in TMDB_LANGUAGE_OVERRIDES) {
+    const name = TMDB_LANGUAGE_OVERRIDES[key];
+    return name ? ` · ${name}` : "";
+  }
+  try {
+    const name = new Intl.DisplayNames(["en"], { type: "language" }).of(key);
+    return name && name.toLowerCase() !== key ? ` · ${name}` : "";
+  } catch {
+    return "";
+  }
+}
 
 export default async function MovieDetailPage({
   params,
@@ -108,6 +129,7 @@ export default async function MovieDetailPage({
             </h1>
             <p className="text-silver mb-4">
               {movie.year}
+              {languageSuffix(movie.original_language)}
               {directorNames && ` · Directed by ${directorNames}`}
             </p>
 
