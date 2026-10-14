@@ -40,6 +40,7 @@ class MovieDetailResponse(BaseModel):
     title: str
     year: int | None
     genres: list[str] | None
+    original_language: str | None = None  # ISO 639-1 code from TMDb, e.g. 'en', 'hi'
     description: str | None
     poster_url: str | None
     average_rating: float | None
