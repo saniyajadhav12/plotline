@@ -136,6 +136,7 @@ export function OnboardingForm({
               <button
                 key={genre}
                 type="button"
+                aria-pressed={isSelected}
                 onClick={() => toggleGenre(genre)}
                 className={`px-4 py-2 border text-sm transition-colors ${
                   isSelected
@@ -192,6 +193,7 @@ export function OnboardingForm({
                   <button
                     type="button"
                     onClick={() => toggleMovie(movie)}
+                    aria-label={`Remove ${movie.title}`}
                     className="text-paper/70 hover:text-paper"
                   >
                     ×
@@ -214,6 +216,7 @@ export function OnboardingForm({
                 <button
                   key={movie.id}
                   type="button"
+                  aria-pressed={isSelected}
                   onClick={() => toggleMovie(movie)}
                   className={`relative aspect-[2/3] overflow-hidden border-2 transition-colors ${
                     isSelected ? "border-marquee" : "border-transparent"
