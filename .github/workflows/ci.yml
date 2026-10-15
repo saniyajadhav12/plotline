@@ -57,7 +57,7 @@ jobs:
         run: docker build -t plotline-backend:ci .
 
   frontend:
-    name: Frontend (lint, build)
+    name: Frontend (lint, test, build)
     runs-on: ubuntu-latest
 
     steps:
@@ -78,6 +78,10 @@ jobs:
       - name: Lint
         working-directory: web
         run: npm run lint
+
+      - name: Run tests
+        working-directory: web
+        run: npm test -- --ci
 
       - name: Build
         working-directory: web
