@@ -14,7 +14,7 @@ from app.schemas.movie import (
     CastCrewResponse,
     WatchProviderResponse,
 )
-from app.services.embedding_model import get_embedding_model
+from app.services.embedding_model import SemanticSearchUnavailable, get_embedding_model
 
 router = APIRouter(prefix="/movies", tags=["movies"])
 
@@ -32,7 +32,11 @@ def semantic_search(
     similar movies even if none of those words appear in their titles
     or descriptions.
     """
-    model = get_embedding_model()
+    try:
+        model = get_embedding_model()
+    except SemanticSearchUnavailable as e:
+        # Production ships without PyTorch; the feature is hidden in the UI there.
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)) from e
     query_embedding = model.encode(q).tolist()
 
     results = (
