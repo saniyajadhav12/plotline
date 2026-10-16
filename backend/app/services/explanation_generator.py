@@ -20,7 +20,17 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.models import Movie, Rating, CastCrew
 
-_client = genai.Client(api_key=settings.gemini_api_key)
+_client = None  # created on first use; stays None when no GEMINI_API_KEY is set
+
+
+def _get_client():
+    """The Gemini client, or None if no API key is configured. Created lazily, so a
+    missing key never stops the app from starting: explanations simply fall back to
+    the templated text."""
+    global _client
+    if _client is None and settings.gemini_api_key:
+        _client = genai.Client(api_key=settings.gemini_api_key)
+    return _client
 
 GEMINI_MODEL = "gemini-3.8-flash"
 DEFAULT_COOLDOWN_SECONDS = 60          # when a 429 doesn't say how long to wait
@@ -32,8 +42,9 @@ _RETRY_DELAY_RE = re.compile(r"retryDelay'?\s*:\s*'(\d+)s'")
 
 
 def gemini_available() -> bool:
-    """False while the circuit breaker is open (recent quota error)."""
-    return time.time() >= _gemini_disabled_until
+    """False when no API key is configured, or while the circuit breaker is open
+    (recent quota error)."""
+    return bool(settings.gemini_api_key) and time.time() >= _gemini_disabled_until
 
 
 def _open_circuit(error_text: str) -> None:
@@ -99,6 +110,9 @@ def try_gemini_explanation(
     """
     if not gemini_available():
         return None
+    client = _get_client()
+    if client is None:
+        return None
 
     context = _get_signal_context(user_id, movie, breakdown, db)
     prompt = (
@@ -112,7 +126,7 @@ def try_gemini_explanation(
 
     for attempt in range(1, max_retries + 1):
         try:
-            response = _client.models.generate_content(model=GEMINI_MODEL, contents=prompt)
+            response = client.models.generate_content(model=GEMINI_MODEL, contents=prompt)
             text = (response.text or "").strip()
             return text or None
         except Exception as e:
