@@ -7,9 +7,12 @@ import { AuthShell } from "@/components/auth/AuthShell";
 import { FormField } from "@/components/auth/FormField";
 import { SubmitButton } from "@/components/auth/SubmitButton";
 import { parseErrorDetail } from "@/lib/errors";
+import { useWarmUpBackend } from "@/lib/useWarmUpBackend";
 
 function LoginForm() {
   const router = useRouter();
+  // This page renders without the backend, so start waking it now (free tier sleeps when idle).
+  useWarmUpBackend();
   const searchParams = useSearchParams();
   const sessionExpired = searchParams.get("session_expired") === "1";
   const [email, setEmail] = useState("");

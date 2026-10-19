@@ -7,9 +7,12 @@ import { AuthShell } from "@/components/auth/AuthShell";
 import { FormField } from "@/components/auth/FormField";
 import { SubmitButton } from "@/components/auth/SubmitButton";
 import { parseErrorDetail } from "@/lib/errors";
+import { useWarmUpBackend } from "@/lib/useWarmUpBackend";
 
 export default function SignupPage() {
   const router = useRouter();
+  // This page renders without the backend, so start waking it now (free tier sleeps when idle).
+  useWarmUpBackend();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import LoginPage from "./page";
+import { useWarmUpBackend } from "@/lib/useWarmUpBackend";
 
 // --- next/navigation mock: tests inspect redirects and set URL params ---
 const mockPush = jest.fn();
@@ -11,6 +12,9 @@ jest.mock("next/navigation", () => ({
   useRouter: () => ({ push: mockPush, refresh: mockRefresh, replace: jest.fn() }),
   useSearchParams: () => mockSearchParams,
 }));
+
+// The backend warm-up ping is tested separately; here it would add an extra fetch call.
+jest.mock("@/lib/useWarmUpBackend", () => ({ useWarmUpBackend: jest.fn() }));
 
 // --- fetch mock: each test decides what the "server" returns ---
 const mockFetch = jest.fn();
@@ -33,6 +37,11 @@ async function fillAndSubmit(email = "sue@example.com", password = "correct-hors
 }
 
 describe("Login page", () => {
+  it("starts waking the backend as soon as the page opens", () => {
+    render(<LoginPage />);
+    expect(useWarmUpBackend).toHaveBeenCalled();
+  });
+
   it("does not show the session-expired banner on a normal visit", () => {
     render(<LoginPage />);
     expect(screen.queryByText(/your session expired/i)).not.toBeInTheDocument();
