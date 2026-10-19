@@ -1,5 +1,6 @@
 import { requireToken } from "@/lib/require-auth";
 import { backendFetch } from "@/lib/api";
+import { buildGenreRows, GENRE_ROW_SIZE, MAX_GENRE_ROWS } from "@/lib/genreRows";
 import { TopNav } from "@/components/layout/TopNav";
 import { MovieRow } from "@/components/movies/MovieRow";
 import { HeroBanner } from "@/components/movies/HeroBanner";
@@ -27,27 +28,25 @@ type MovieDetail = Movie & {
   description: string | null;
 };
 
+type OnboardingData = {
+  selected_genres: string[] | null;
+};
+
 export default async function HomePage() {
   const token = await requireToken();
 
-  const [recommendations, trending] = await Promise.all([
+  const [recommendations, trending, onboarding] = await Promise.all([
     backendFetch<Recommendation[]>("/users/me/recommendations", { token }).catch(() => []),
     backendFetch<MovieListResponse>("/movies?sort=popularity&page_size=20", { token }).catch(
       () => ({ results: [] })
     ),
+    backendFetch<OnboardingData>("/users/me/onboarding", { token }).catch(() => ({
+      selected_genres: null,
+    })),
   ]);
 
   const recommendedMovies = recommendations.map((r) => ({ ...r.movie, recommendationId: r.id }));
-
-  // Group recommendations by their first genre for "Because you liked X" rows
-  const byGenre = new Map<string, Movie[]>();
-  for (const rec of recommendations) {
-    const genre = rec.movie.genres?.[0];
-    if (!genre) continue;
-    if (!byGenre.has(genre)) byGenre.set(genre, []);
-    byGenre.get(genre)!.push(rec.movie);
-  }
-  const genreRows = Array.from(byGenre.entries()).filter(([, movies]) => movies.length >= 2);
+  const selectedGenres = (onboarding.selected_genres ?? []).slice(0, MAX_GENRE_ROWS);
 
   // Feature the top recommendation in the hero if available, otherwise the
   // top trending movie, so the page always has a strong visual anchor.
@@ -57,9 +56,25 @@ export default async function HomePage() {
     ? { movie: trending.results[0], recommendationId: undefined, eyebrow: "Trending now" }
     : null;
 
-  const heroDetail = heroSource
-    ? await backendFetch<MovieDetail>(`/movies/${heroSource.movie.id}`, { token }).catch(() => null)
-    : null;
+  // Second batch, in parallel: hero details + popular movies for each selected genre.
+  const [heroDetail, popularByGenre] = await Promise.all([
+    heroSource
+      ? backendFetch<MovieDetail>(`/movies/${heroSource.movie.id}`, { token }).catch(() => null)
+      : Promise.resolve(null),
+    Promise.all(
+      selectedGenres.map((genre) =>
+        backendFetch<MovieListResponse>(
+          `/movies?genre=${encodeURIComponent(genre)}&sort=popularity&page_size=${GENRE_ROW_SIZE}`,
+          { token }
+        )
+          .then((res) => res.results)
+          .catch(() => [])
+      )
+    ),
+  ]);
+
+  // "Because you like <genre>" rows come from the genres the user actually picked.
+  const genreRows = buildGenreRows(selectedGenres, recommendations, popularByGenre);
 
   return (
     <div className="min-h-screen bg-paper">
@@ -97,12 +112,8 @@ export default async function HomePage() {
             movies={recommendedMovies.slice(1)}
           />
         )}
-        {genreRows.map(([genre, movies]) => (
-          <MovieRow
-            key={genre}
-            title={`Because you like ${genre}`}
-            movies={movies}
-          />
+        {genreRows.map(({ genre, movies }) => (
+          <MovieRow key={genre} title={`Because you like ${genre}`} movies={movies} />
         ))}
 
         <MovieRow title="Trending Now" movies={trending.results} />
