@@ -1,9 +1,18 @@
 import { requireToken } from "@/lib/require-auth";
 import { backendFetch } from "@/lib/api";
-import { buildGenreRows, GENRE_ROW_SIZE, MAX_GENRE_ROWS } from "@/lib/genreRows";
+import {
+  buildGenreRows,
+  GENRE_POOL_SIZE,
+  GENRE_ROW_SIZE,
+  MAX_GENRE_ROWS,
+  withoutShown,
+} from "@/lib/genreRows";
 import { TopNav } from "@/components/layout/TopNav";
 import { MovieRow } from "@/components/movies/MovieRow";
 import { HeroBanner } from "@/components/movies/HeroBanner";
+
+/** Trending is fetched with headroom, since movies already shown above it are skipped. */
+const TRENDING_POOL_SIZE = 40;
 
 type Movie = {
   id: string;
@@ -37,9 +46,9 @@ export default async function HomePage() {
 
   const [recommendations, trending, onboarding] = await Promise.all([
     backendFetch<Recommendation[]>("/users/me/recommendations", { token }).catch(() => []),
-    backendFetch<MovieListResponse>("/movies?sort=popularity&page_size=20", { token }).catch(
-      () => ({ results: [] })
-    ),
+    backendFetch<MovieListResponse>(`/movies?sort=popularity&page_size=${TRENDING_POOL_SIZE}`, {
+      token,
+    }).catch(() => ({ results: [] })),
     backendFetch<OnboardingData>("/users/me/onboarding", { token }).catch(() => ({
       selected_genres: null,
     })),
@@ -56,7 +65,7 @@ export default async function HomePage() {
     ? { movie: trending.results[0], recommendationId: undefined, eyebrow: "Trending now" }
     : null;
 
-  // Second batch, in parallel: hero details + popular movies for each selected genre.
+  // Second batch, in parallel: hero details + a pool of popular movies per selected genre.
   const [heroDetail, popularByGenre] = await Promise.all([
     heroSource
       ? backendFetch<MovieDetail>(`/movies/${heroSource.movie.id}`, { token }).catch(() => null)
@@ -64,7 +73,7 @@ export default async function HomePage() {
     Promise.all(
       selectedGenres.map((genre) =>
         backendFetch<MovieListResponse>(
-          `/movies?genre=${encodeURIComponent(genre)}&sort=popularity&page_size=${GENRE_ROW_SIZE}`,
+          `/movies?genre=${encodeURIComponent(genre)}&sort=popularity&page_size=${GENRE_POOL_SIZE}`,
           { token }
         )
           .then((res) => res.results)
@@ -73,8 +82,12 @@ export default async function HomePage() {
     ),
   ]);
 
-  // "Because you like <genre>" rows come from the genres the user actually picked.
-  const genreRows = buildGenreRows(selectedGenres, recommendations, popularByGenre);
+  // Nothing repeats on the page: track every movie shown so far, top to bottom.
+  const shownIds = new Set<string>(recommendations.map((r) => r.movie.id));
+  if (heroSource) shownIds.add(heroSource.movie.id);
+
+  const genreRows = buildGenreRows(selectedGenres, shownIds, popularByGenre);
+  const trendingMovies = withoutShown(trending.results, shownIds).slice(0, GENRE_ROW_SIZE);
 
   return (
     <div className="min-h-screen bg-paper">
@@ -116,7 +129,7 @@ export default async function HomePage() {
           <MovieRow key={genre} title={`Because you like ${genre}`} movies={movies} />
         ))}
 
-        <MovieRow title="Trending Now" movies={trending.results} />
+        <MovieRow title="Trending Now" movies={trendingMovies} />
       </main>
     </div>
   );
