@@ -13,6 +13,7 @@ from app.schemas.movie import (
     MovieDetailResponse,
     CastCrewResponse,
     WatchProviderResponse,
+    LanguageCount,
 )
 from app.services.embedding_model import SemanticSearchUnavailable, get_embedding_model
 
@@ -60,6 +61,26 @@ def list_genres(db: Session = Depends(get_db)):
     return sorted(genre_set)
 
 
+# Declared before /{movie_id} so "languages" isn't parsed as a movie id.
+@router.get("/languages", response_model=list[LanguageCount])
+def list_languages(
+    min_movies: int = Query(default=5, ge=1, description="Leave out languages with fewer movies than this"),
+    db: Session = Depends(get_db),
+):
+    """Original languages in the catalog with their movie counts, most common first.
+    TMDb's "xx" (no language, e.g. silent films) and missing values are excluded."""
+    movie_count = func.count(Movie.id)
+    rows = (
+        db.query(Movie.original_language, movie_count)
+        .filter(Movie.original_language.isnot(None), Movie.original_language != "xx")
+        .group_by(Movie.original_language)
+        .having(movie_count >= min_movies)
+        .order_by(movie_count.desc(), Movie.original_language)
+        .all()
+    )
+    return [LanguageCount(code=code, count=count) for code, count in rows]
+
+
 def _normalize_for_search(text: str) -> str:
     """Strip anything that isn't a letter or digit, lowercase the rest,
     so \"Spider-Man\", \"spider man\", and \"spiderman\" all match."""
@@ -70,6 +91,7 @@ def _normalize_for_search(text: str) -> str:
 def list_movies(
     q: str | None = Query(default=None, description="Search by title"),
     genre: str | None = Query(default=None, description="Filter by genre"),
+    language: str | None = Query(default=None, description="Filter by original language (ISO 639-1, e.g. 'ko')"),
     sort: str = Query(
         default="title",
         description="Sort order: title, popularity (real-world TMDb popularity), or newest (release year)",
@@ -87,6 +109,9 @@ def list_movies(
 
     if genre:
         query = query.filter(Movie.genres.any(genre))
+
+    if language:
+        query = query.filter(Movie.original_language == language.lower())
 
     total = query.count()
 
