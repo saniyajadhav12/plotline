@@ -67,7 +67,7 @@ describe("OnboardingForm", () => {
   it("loads genres from the API and shows them as toggle buttons", async () => {
     await renderForm();
 
-    expect(mockFetch).toHaveBeenCalledWith("/api/movies/genres");
+    expect(mockFetch).toHaveBeenCalledWith("/api/movies/genres", expect.anything());
     for (const genre of GENRES) {
       expect(screen.getByRole("button", { name: genre })).toHaveAttribute("aria-pressed", "false");
     }

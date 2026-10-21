@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { fetchListWithRetry } from "@/lib/fetchWithRetry";
 
 type Movie = {
   id: string;
@@ -36,9 +37,11 @@ export function OnboardingForm({
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    fetch("/api/movies/genres")
-      .then((res) => res.json())
-      .then(setAllGenres);
+    const controller = new AbortController();
+    fetchListWithRetry<string>("/api/movies/genres", { signal: controller.signal }).then((list) => {
+      if (!controller.signal.aborted) setAllGenres(list);
+    });
+    return () => controller.abort();
   }, []);
 
   useEffect(() => {

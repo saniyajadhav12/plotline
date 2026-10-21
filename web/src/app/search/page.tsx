@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { TopNav } from "@/components/layout/TopNav";
 import { MovieCard } from "@/components/movies/MovieCard";
 import { languageName } from "@/lib/languages";
+import { fetchListWithRetry } from "@/lib/fetchWithRetry";
 
 type Movie = {
   id: string;
@@ -83,14 +84,19 @@ export default function SearchPage() {
     .filter((l): l is { code: string; name: string } => l.name !== null)
     .sort((a, b) => a.name.localeCompare(b.name));
 
+  // Retried, because these load once on page open, which may be while the
+  // free-tier backend is still waking up. Stops if the page is left.
   useEffect(() => {
-    fetch("/api/movies/genres")
-      .then((res) => res.json())
-      .then(setGenres);
-    fetch("/api/movies/languages")
-      .then((res) => res.json())
-      .then((data) => setLanguages(Array.isArray(data) ? data : []))
-      .catch(() => {});
+    const controller = new AbortController();
+    fetchListWithRetry<string>("/api/movies/genres", { signal: controller.signal }).then((list) => {
+      if (!controller.signal.aborted) setGenres(list);
+    });
+    fetchListWithRetry<{ code: string; count: number }>("/api/movies/languages", {
+      signal: controller.signal,
+    }).then((list) => {
+      if (!controller.signal.aborted) setLanguages(list);
+    });
+    return () => controller.abort();
   }, []);
 
   useEffect(() => {
