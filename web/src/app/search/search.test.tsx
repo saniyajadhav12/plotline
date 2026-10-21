@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import SearchPage from "./page";
 
@@ -61,5 +61,45 @@ describe("Search page language filter", () => {
     // Each movie card is one link (a card without a poster shows its title twice).
     const resultLinks = screen.getAllByRole("link").map((a) => a.getAttribute("href"));
     expect(resultLinks).toEqual(["/movies/parasite"]);
+  });
+});
+
+
+describe("Search page filter lists", () => {
+  it("survives the lists failing at first, then fills them in without a reload", async () => {
+    jest.useFakeTimers();
+    try {
+      let listCalls = 0;
+      mockFetch.mockImplementation(async (url: string) => {
+        if (url === "/api/movies/genres" || url === "/api/movies/languages") {
+          listCalls += 1;
+          // The first attempt for each list fails, like a backend still waking up.
+          if (listCalls <= 2) {
+            return { ok: false, status: 504, json: async () => ({ detail: "Gateway timeout" }) };
+          }
+          return jsonResponse(url.endsWith("genres") ? ["Drama"] : [{ code: "ko", count: 46 }]);
+        }
+        if (url.startsWith("/api/movies?")) return jsonResponse({ results: [], total: 0 });
+        throw new Error(`Unexpected fetch in test: ${url}`);
+      });
+
+      render(<SearchPage />);
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      // First attempts failed: no crash, just the "All" options.
+      expect(screen.getByRole("option", { name: "All genres" })).toBeInTheDocument();
+      expect(screen.queryByRole("option", { name: "Korean" })).not.toBeInTheDocument();
+
+      // The first retry (after 3 s) succeeds.
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(3000);
+      });
+      expect(await screen.findByRole("option", { name: "Korean" })).toBeInTheDocument();
+      expect(screen.getByRole("option", { name: "Drama" })).toBeInTheDocument();
+    } finally {
+      jest.useRealTimers();
+    }
   });
 });
