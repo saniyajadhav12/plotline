@@ -85,3 +85,28 @@ def test_upgrade_without_a_gemini_key_leaves_templated_explanations(db_session, 
 
     assert upgrade_explanations(user.id, pending, db_session) == 0
     assert {r.id: r.explanation_text for r in saved_rows(db_session, user)} == before
+
+
+
+def test_an_overloaded_gemini_stops_after_the_first_movie_in_a_batch(db_session, monkeypatch):
+    from types import SimpleNamespace
+
+    calls = {"n": 0}
+
+    def always_overloaded(model, contents):
+        calls["n"] += 1
+        raise Exception("503 UNAVAILABLE: high demand")
+
+    fake = SimpleNamespace(models=SimpleNamespace(generate_content=always_overloaded))
+    monkeypatch.setattr(settings, "gemini_api_key", "test-key")
+    monkeypatch.setattr(explanation_generator, "_gemini_disabled_until", 0.0)
+    monkeypatch.setattr(explanation_generator, "_get_client", lambda: fake)
+    monkeypatch.setattr(explanation_generator.time, "sleep", lambda seconds: None)
+
+    user, _ = build_world(db_session)
+    pending = save_recommendations_for_user(user.id, db_session)
+    assert len(pending) == 3
+
+    assert upgrade_explanations(user.id, pending, db_session) == 0
+    assert calls["n"] == 3  # 3 attempts for the first movie, then paused: not 3 x 3
+    assert all(r.explanation_text.startswith(TEMPLATED_PREFIX) for r in saved_rows(db_session, user))

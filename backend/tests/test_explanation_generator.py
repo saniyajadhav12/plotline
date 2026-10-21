@@ -30,3 +30,55 @@ def test_quota_error_opens_the_circuit_breaker(monkeypatch):
     eg._open_circuit("429 RESOURCE_EXHAUSTED ... 'retryDelay': '30s'")
 
     assert eg.gemini_available() is False
+
+
+# --- overload handling (fake client, no network, no real waiting) -----------------
+
+from types import SimpleNamespace  # noqa: E402
+import time  # noqa: E402
+
+
+def _fake_client(responses):
+    """generate_content returns/raises each item of `responses` in turn; records call count."""
+    calls = {"n": 0}
+
+    def generate_content(model, contents):
+        item = responses[min(calls["n"], len(responses) - 1)]
+        calls["n"] += 1
+        if isinstance(item, Exception):
+            raise item
+        return SimpleNamespace(text=item)
+
+    return SimpleNamespace(models=SimpleNamespace(generate_content=generate_content)), calls
+
+
+def _setup_gemini(monkeypatch, client):
+    monkeypatch.setattr(settings, "gemini_api_key", "test-key")
+    monkeypatch.setattr(eg, "_gemini_disabled_until", 0.0)
+    monkeypatch.setattr(eg, "_get_client", lambda: client)
+    monkeypatch.setattr(eg, "_get_signal_context", lambda *args: "context")
+    monkeypatch.setattr(eg.time, "sleep", lambda seconds: None)
+
+
+def test_every_retry_failing_pauses_gemini_briefly(monkeypatch):
+    client, calls = _fake_client([Exception("503 UNAVAILABLE: high demand")])
+    _setup_gemini(monkeypatch, client)
+
+    result = eg.try_gemini_explanation(None, SimpleNamespace(title="Movie"), {}, None, max_retries=3)
+
+    assert result is None
+    assert calls["n"] == 3
+    assert eg.gemini_available() is False
+    remaining = eg._gemini_disabled_until - time.time()
+    assert eg.OVERLOAD_COOLDOWN_SECONDS - 5 < remaining <= eg.OVERLOAD_COOLDOWN_SECONDS
+
+
+def test_a_failure_then_success_returns_the_text_and_does_not_pause(monkeypatch):
+    client, calls = _fake_client([Exception("503 UNAVAILABLE"), "Because you loved Inception."])
+    _setup_gemini(monkeypatch, client)
+
+    result = eg.try_gemini_explanation(None, SimpleNamespace(title="Movie"), {}, None, max_retries=3)
+
+    assert result == "Because you loved Inception."
+    assert calls["n"] == 2
+    assert eg.gemini_available() is True

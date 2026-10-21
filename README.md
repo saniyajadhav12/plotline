@@ -64,7 +64,7 @@ Results go into a `movie_neighbors` table (~1M rows) and columns on `movies`.
 - **Recommendations:** SciPy sparse matrices, scikit-learn (cosine similarity, TF-IDF), precomputed neighbor tables
 - **AI:** Google Gemini (`google-genai`) for explanations
 - **Data:** MovieLens `ml-latest` + TMDb API
-- **Testing:** Pytest (76 backend tests), Jest + React Testing Library (46 frontend tests)
+- **Testing:** Pytest (79 backend tests), Jest + React Testing Library (46 frontend tests)
 - **CI:** GitHub Actions: ruff + Pytest against a Postgres/pgvector service container + Docker build; ESLint + Jest + Next.js build
 - **Hosting:** Vercel (frontend), Render (backend, Docker), Neon (Postgres), all on free tiers; merges to `main` auto-deploy
 

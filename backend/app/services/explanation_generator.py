@@ -35,6 +35,7 @@ def _get_client():
 GEMINI_MODEL = "gemini-3.8-flash"
 DEFAULT_COOLDOWN_SECONDS = 60          # when a 429 doesn't say how long to wait
 MAX_COOLDOWN_SECONDS = 24 * 60 * 60    # never back off longer than a day
+OVERLOAD_COOLDOWN_SECONDS = 120        # after every retry fails (e.g. 503 high demand)
 
 _circuit_lock = threading.Lock()
 _gemini_disabled_until = 0.0
@@ -49,13 +50,18 @@ def gemini_available() -> bool:
 
 def _open_circuit(error_text: str) -> None:
     """Stop calling Gemini for as long as the 429 response asks."""
-    global _gemini_disabled_until
     match = _RETRY_DELAY_RE.search(error_text)
     cooldown = int(match.group(1)) if match else DEFAULT_COOLDOWN_SECONDS
-    cooldown = max(1, min(cooldown, MAX_COOLDOWN_SECONDS))
+    _disable_gemini_for(cooldown, "quota exhausted")
+
+
+def _disable_gemini_for(seconds: int, reason: str) -> None:
+    """Pause all Gemini calls for `seconds` (clamped to 1s..MAX_COOLDOWN_SECONDS)."""
+    global _gemini_disabled_until
+    seconds = max(1, min(seconds, MAX_COOLDOWN_SECONDS))
     with _circuit_lock:
-        _gemini_disabled_until = max(_gemini_disabled_until, time.time() + cooldown)
-    print(f"  [Gemini] quota exhausted; skipping Gemini for {cooldown}s (templated explanations meanwhile)")
+        _gemini_disabled_until = max(_gemini_disabled_until, time.time() + seconds)
+    print(f"  [Gemini] {reason}; skipping Gemini for {seconds}s (templated explanations meanwhile)")
 
 
 def _is_quota_error(error_text: str) -> bool:
@@ -138,6 +144,9 @@ def try_gemini_explanation(
             if attempt < max_retries:
                 time.sleep(2 * attempt)
 
+    # Every retry failed (e.g. 503 "high demand"). Pause briefly so the rest of the
+    # batch uses templated text instead of retrying each movie the same way.
+    _disable_gemini_for(OVERLOAD_COOLDOWN_SECONDS, f"all {max_retries} attempts failed")
     return None
 
 
