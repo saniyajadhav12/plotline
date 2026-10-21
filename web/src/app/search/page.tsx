@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { TopNav } from "@/components/layout/TopNav";
 import { MovieCard } from "@/components/movies/MovieCard";
+import { languageName } from "@/lib/languages";
 
 type Movie = {
   id: string;
@@ -12,6 +13,46 @@ type Movie = {
 };
 
 type Mode = "title" | "theme";
+
+/**
+ * A native <select> with our own chevron. The browser's default arrow sits flush
+ * against the edge and varies between browsers; this keeps both filters identical.
+ * Still a real <select>, so keyboard, screen readers and the OS menu all work as usual.
+ */
+function FilterSelect({
+  label,
+  value,
+  onChange,
+  children,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="relative">
+      <select
+        aria-label={label}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full sm:w-48 appearance-none cursor-pointer border border-ink/20 bg-paper pl-3 pr-10 py-2.5 text-ink focus:outline-none focus:border-marquee transition-colors"
+      >
+        {children}
+      </select>
+      <svg
+        aria-hidden="true"
+        className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-silver"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        strokeWidth={2}
+      >
+        <path strokeLinecap="round" strokeLinejoin="round" d="M6 9l6 6 6-6" />
+      </svg>
+    </div>
+  );
+}
 
 export default function SearchPage() {
   // "By plot or subject" (semantic search) is temporarily hidden from the
@@ -23,6 +64,8 @@ export default function SearchPage() {
   const [query, setQuery] = useState("");
   const [genre, setGenre] = useState("");
   const [genres, setGenres] = useState<string[]>([]);
+  const [language, setLanguage] = useState("");
+  const [languages, setLanguages] = useState<{ code: string; count: number }[]>([]);
   const [results, setResults] = useState<Movie[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -34,10 +77,20 @@ export default function SearchPage() {
   const [themeSearched, setThemeSearched] = useState(false);
   const themeRequestIdRef = useRef(0);
 
+  // Named languages only, alphabetical (codes the browser can't name are skipped).
+  const languageOptions = languages
+    .map((l) => ({ code: l.code, name: languageName(l.code) }))
+    .filter((l): l is { code: string; name: string } => l.name !== null)
+    .sort((a, b) => a.name.localeCompare(b.name));
+
   useEffect(() => {
     fetch("/api/movies/genres")
       .then((res) => res.json())
       .then(setGenres);
+    fetch("/api/movies/languages")
+      .then((res) => res.json())
+      .then((data) => setLanguages(Array.isArray(data) ? data : []))
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -49,6 +102,7 @@ export default function SearchPage() {
       const params = new URLSearchParams();
       if (query.trim()) params.set("q", query.trim());
       if (genre) params.set("genre", genre);
+      if (language) params.set("language", language);
       params.set("sort", query.trim() ? "newest" : "popularity");
       params.set("page_size", "24");
 
@@ -63,7 +117,7 @@ export default function SearchPage() {
         });
     }, 300);
     return () => clearTimeout(timeout);
-  }, [query, genre, mode]);
+  }, [query, genre, language, mode]);
 
   function runThemeSearch() {
     const trimmed = themeQuery.trim();
@@ -126,21 +180,26 @@ export default function SearchPage() {
                 />
               </div>
 
-              <select
-                value={genre}
-                onChange={(e) => setGenre(e.target.value)}
-                className="border border-ink/20 bg-paper px-3 py-2.5 text-ink focus:outline-none focus:border-marquee transition-colors"
-              >
+              <FilterSelect label="Genre" value={genre} onChange={setGenre}>
                 <option value="">All genres</option>
                 {genres.map((g) => (
                   <option key={g} value={g}>
                     {g}
                   </option>
                 ))}
-              </select>
+              </FilterSelect>
+
+              <FilterSelect label="Language" value={language} onChange={setLanguage}>
+                <option value="">All languages</option>
+                {languageOptions.map((l) => (
+                  <option key={l.code} value={l.code}>
+                    {l.name}
+                  </option>
+                ))}
+              </FilterSelect>
             </div>
 
-            {!loading && (query || genre) && (
+            {!loading && (query || genre || language) && (
               <p className="text-silver text-sm mb-6">{total} results</p>
             )}
 
@@ -148,7 +207,9 @@ export default function SearchPage() {
               <p className="text-silver">Loading…</p>
             ) : results.length === 0 ? (
               <p className="text-silver">
-                {query || genre ? "No movies found." : "Start typing to search, or pick a genre."}
+                {query || genre || language
+                  ? "No movies found."
+                  : "Start typing to search, or pick a genre or language."}
               </p>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-6">

@@ -51,3 +51,8 @@ class MovieDetailResponse(BaseModel):
     watch_providers: list[WatchProviderResponse]
 
     model_config = {"from_attributes": True}
+
+
+class LanguageCount(BaseModel):
+    code: str  # ISO 639-1 original-language code from TMDb, e.g. "ko"
+    count: int

@@ -1,3 +1,4 @@
+import { languageName } from "@/lib/languages";
 import Image from "next/image";
 import { requireToken, backendFetchOrRedirect } from "@/lib/require-auth";
 import { backendFetch } from "@/lib/api";
@@ -46,24 +47,10 @@ type WatchlistItem = {
   movie: { id: string };
 };
 
-// TMDb uses a few non-standard language codes: "cn" is Cantonese, and "xx"
-// means no spoken language (e.g. silent films), which we don't display.
-const TMDB_LANGUAGE_OVERRIDES: Record<string, string | null> = { cn: "Cantonese", xx: null };
-
 /** " · Hindi" for "hi", or "" when the language is missing or unknown. */
 function languageSuffix(code: string | null | undefined): string {
-  if (!code) return "";
-  const key = code.toLowerCase();
-  if (key in TMDB_LANGUAGE_OVERRIDES) {
-    const name = TMDB_LANGUAGE_OVERRIDES[key];
-    return name ? ` · ${name}` : "";
-  }
-  try {
-    const name = new Intl.DisplayNames(["en"], { type: "language" }).of(key);
-    return name && name.toLowerCase() !== key ? ` · ${name}` : "";
-  } catch {
-    return "";
-  }
+  const name = languageName(code);
+  return name ? ` · ${name}` : "";
 }
 
 export default async function MovieDetailPage({
