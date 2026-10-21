@@ -146,6 +146,15 @@ def determine_primary_method(breakdown: dict) -> str:
     cf = breakdown["cf_score"]
     content = breakdown["content_score"]
 
+    if cf == 0 and content == 0:
+        # Both normalized to 0 (each was the lowest scorer in its own list), so the
+        # normalized scores can't tell us anything: use which signals found the movie.
+        found_by_cf = breakdown.get("raw_cf_score") is not None
+        found_by_content = breakdown.get("raw_content_score") is not None
+        if found_by_cf and found_by_content:
+            return "hybrid"
+        return "content" if found_by_content else "collaborative"
+
     if cf > 0 and content > 0 and abs(cf - content) < 0.15:
         return "hybrid"
     elif cf >= content:
