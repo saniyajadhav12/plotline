@@ -40,7 +40,7 @@ export function HeroBanner({
         <div className="absolute inset-0 bg-gradient-to-t from-film via-film/80 to-film/40" />
       </div>
 
-      <div className="relative px-8 sm:px-16 py-12 sm:py-16 flex flex-col sm:flex-row items-start sm:items-end gap-8">
+      <div className="relative page-container py-12 sm:py-16 flex flex-col sm:flex-row items-start sm:items-end gap-8">
         {poster_url && (
           <div className="hidden sm:block w-[160px] aspect-[2/3] relative flex-shrink-0 shadow-lg">
             <Image

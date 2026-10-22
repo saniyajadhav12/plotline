@@ -106,7 +106,7 @@ export default async function HomePage() {
         />
       )}
 
-      <main className="max-w-6xl mx-auto px-8 sm:px-16 pb-10">
+      <main className="page-container pb-10">
         {!heroSource && (
           <div className="mb-12 pt-10">
             <h1 className="font-[family-name:var(--font-display)] text-3xl text-ink mb-2">

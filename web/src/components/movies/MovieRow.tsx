@@ -29,6 +29,15 @@ function Chevron({ direction }: { direction: "left" | "right" }) {
   );
 }
 
+// Each edge fades from the page background into the posters, with the arrow on
+// top. A fade (and its arrow) only appears when that side can actually scroll.
+const FADE =
+  "pointer-events-none absolute inset-y-0 z-10 hidden sm:block w-16 lg:w-24 transition-opacity duration-200";
+const ARROW =
+  "pointer-events-auto absolute top-[38%] -translate-y-1/2 flex items-center justify-center " +
+  "h-10 w-10 rounded-full bg-paper/90 text-ink shadow-md border border-silver/30 " +
+  "transition hover:bg-ink hover:text-paper";
+
 export function MovieRow({
   title,
   subtitle,
@@ -70,53 +79,54 @@ export function MovieRow({
 
   if (movies.length === 0) return null;
 
-  const hasOverflow = canScrollLeft || canScrollRight;
-  const arrowClass =
-    "absolute top-[38%] -translate-y-1/2 z-10 hidden sm:flex items-center justify-center " +
-    "h-10 w-10 rounded-full bg-paper text-ink shadow-md border border-silver/30 " +
-    "transition hover:bg-ink hover:text-paper " +
-    "disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-paper disabled:hover:text-ink";
-
   return (
     <section className="mb-12">
-      <h2 className="font-[family-name:var(--font-display)] text-2xl text-ink mb-1">
-        {title}
-      </h2>
+      <h2 className="font-[family-name:var(--font-display)] text-2xl text-ink mb-1">{title}</h2>
       {subtitle && <p className="text-silver text-sm mb-4">{subtitle}</p>}
 
-      <div className="relative -mx-8 sm:-mx-16">
-        {hasOverflow && (
-          <button
-            type="button"
-            onClick={() => scrollByPage(-1)}
-            disabled={!canScrollLeft}
-            aria-label={`Scroll ${title} left`}
-            className={`${arrowClass} left-3`}
-          >
-            <Chevron direction="left" />
-          </button>
-        )}
+      <div className="relative bleed-x">
+        <div
+          className={`${FADE} left-0 bg-gradient-to-r from-paper via-paper/80 to-transparent ${
+            canScrollLeft ? "opacity-100" : "opacity-0"
+          }`}
+        >
+          {canScrollLeft && (
+            <button
+              type="button"
+              onClick={() => scrollByPage(-1)}
+              aria-label={`Scroll ${title} left`}
+              className={`${ARROW} left-3`}
+            >
+              <Chevron direction="left" />
+            </button>
+          )}
+        </div>
 
         <div
           ref={scrollerRef}
-          className="flex gap-5 overflow-x-auto pb-2 px-8 sm:px-16 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="flex gap-5 overflow-x-auto pb-2 gutter-x [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
           {movies.map((movie) => (
             <MovieCard key={movie.id} {...movie} />
           ))}
         </div>
 
-        {hasOverflow && (
-          <button
-            type="button"
-            onClick={() => scrollByPage(1)}
-            disabled={!canScrollRight}
-            aria-label={`Scroll ${title} right`}
-            className={`${arrowClass} right-3`}
-          >
-            <Chevron direction="right" />
-          </button>
-        )}
+        <div
+          className={`${FADE} right-0 bg-gradient-to-l from-paper via-paper/80 to-transparent ${
+            canScrollRight ? "opacity-100" : "opacity-0"
+          }`}
+        >
+          {canScrollRight && (
+            <button
+              type="button"
+              onClick={() => scrollByPage(1)}
+              aria-label={`Scroll ${title} right`}
+              className={`${ARROW} right-3`}
+            >
+              <Chevron direction="right" />
+            </button>
+          )}
+        </div>
       </div>
     </section>
   );

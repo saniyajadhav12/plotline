@@ -155,7 +155,7 @@ export default function SearchPage() {
     <div className="min-h-screen bg-paper">
       <TopNav />
 
-      <main className="max-w-6xl mx-auto px-8 sm:px-16 py-10">
+      <main className="page-container py-10">
         <h1 className="font-[family-name:var(--font-display)] text-3xl text-ink mb-6">
           Search
         </h1>
@@ -218,7 +218,7 @@ export default function SearchPage() {
                   : "Start typing to search, or pick a genre or language."}
               </p>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-6">
+              <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 xl:grid-cols-8 2xl:grid-cols-10 gap-6">
                 {results.map((movie) => (
                   <MovieCard key={movie.id} {...movie} />
                 ))}
@@ -257,7 +257,7 @@ export default function SearchPage() {
                 {themeSearched ? "No matches found." : "Describe a plot, setting, or subject, then search."}
               </p>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-6">
+              <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 xl:grid-cols-8 2xl:grid-cols-10 gap-6">
                 {themeResults.map((movie) => (
                   <MovieCard key={movie.id} {...movie} />
                 ))}
