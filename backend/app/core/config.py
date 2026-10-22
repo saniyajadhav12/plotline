@@ -12,6 +12,10 @@ class Settings(BaseSettings):
     # so the reset flow can be tested without email. Must stay False in production,
     # where it would let anyone who knows an email address take over that account.
     expose_reset_token_in_response: bool = False
+    # Shared secret between the frontend's server (Vercel) and this API. Only requests
+    # carrying it get the reset token back, so the frontend can email the link without
+    # the token ever reaching a browser. Empty = never return tokens.
+    internal_api_key: str = ""
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

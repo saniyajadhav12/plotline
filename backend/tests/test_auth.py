@@ -138,3 +138,76 @@ def test_forgot_password_returns_the_token_only_in_dev_mode(client, monkeypatch)
     response = client.post("/auth/forgot-password", json={"email": "ada@example.com"})
 
     assert response.json()["dev_reset_token"]
+
+
+# --- reset tokens are only handed to the frontend's server, and rate limited -------
+
+INTERNAL_KEY = "test-internal-key"
+
+
+def _signup(client, email="eve@example.com"):
+    client.post("/auth/signup", json={"name": "Eve", "email": email, "password": "password123"})
+
+
+def _forgot(client, email="eve@example.com", key=None):
+    headers = {"X-Internal-Key": key} if key is not None else {}
+    return client.post("/auth/forgot-password", json={"email": email}, headers=headers)
+
+
+def test_internal_key_returns_a_working_reset_token(client, monkeypatch):
+    from app.core.config import settings
+    monkeypatch.setattr(settings, "internal_api_key", INTERNAL_KEY)
+    _signup(client)
+
+    token = _forgot(client, key=INTERNAL_KEY).json()["reset_token"]
+
+    reset = client.post("/auth/reset-password", json={"token": token, "new_password": "brandnew456"})
+    assert reset.status_code == 200
+    login = client.post("/auth/login", json={"email": "eve@example.com", "password": "brandnew456"})
+    assert login.status_code == 200
+
+
+def test_wrong_internal_key_returns_no_token(client, monkeypatch):
+    from app.core.config import settings
+    monkeypatch.setattr(settings, "internal_api_key", INTERNAL_KEY)
+    _signup(client)
+
+    assert "reset_token" not in _forgot(client, key="guess").json()
+
+
+def test_missing_internal_key_returns_no_token(client, monkeypatch):
+    from app.core.config import settings
+    monkeypatch.setattr(settings, "internal_api_key", INTERNAL_KEY)
+    _signup(client)
+
+    assert "reset_token" not in _forgot(client).json()
+
+
+def test_an_unconfigured_secret_never_matches(client, monkeypatch):
+    from app.core.config import settings
+    monkeypatch.setattr(settings, "internal_api_key", "")
+    _signup(client)
+
+    assert "reset_token" not in _forgot(client, key="").json()
+
+
+def test_reset_requests_are_rate_limited_per_account(client, db_session, monkeypatch):
+    from app.core.config import settings
+    from app.models import PasswordResetToken
+    monkeypatch.setattr(settings, "internal_api_key", INTERNAL_KEY)
+    _signup(client)
+
+    for _ in range(3):
+        assert "reset_token" in _forgot(client, key=INTERNAL_KEY).json()
+    fourth = _forgot(client, key=INTERNAL_KEY)
+
+    assert fourth.status_code == 200
+    assert "reset_token" not in fourth.json()
+    assert db_session.query(PasswordResetToken).count() == 3
+
+
+def test_unknown_email_returns_no_token_even_with_the_internal_key(client, monkeypatch):
+    from app.core.config import settings
+    monkeypatch.setattr(settings, "internal_api_key", INTERNAL_KEY)
+
+    assert "reset_token" not in _forgot(client, email="nobody@example.com", key=INTERNAL_KEY).json()
