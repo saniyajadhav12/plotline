@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.security import hash_password, verify_password, create_access_token, decode_access_token
+from app.core.config import settings
 from app.models import User, PasswordResetToken
 from app.schemas.auth import (
     SignupRequest,
@@ -78,16 +79,15 @@ def forgot_password(payload: ForgotPasswordRequest, db: Session = Depends(get_db
     db.add(PasswordResetToken(user_id=user.id, token=reset_token, expires_at=expires_at))
     db.commit()
 
-    print(f"[DEV] Password reset token for {user.email}: {reset_token}")
+    response = {"message": "If that email is registered, a reset link has been sent."}
 
-    # No real email service is configured yet, so for now the token is
-    # returned directly in the response (clearly dev-mode) rather than
-    # only printed to the server console, so the reset flow is testable
-    # end-to-end without needing access to server logs.
-    return {
-        "message": "If that email is registered, a reset link has been sent.",
-        "dev_reset_token": reset_token,
-    }
+    # Development only (see settings.expose_reset_token_in_response): returning or
+    # logging the token in production would let anyone reset any account.
+    if settings.expose_reset_token_in_response:
+        print(f"[DEV] Password reset token for {user.email}: {reset_token}")
+        response["dev_reset_token"] = reset_token
+
+    return response
 
 
 @router.post("/reset-password", status_code=status.HTTP_200_OK)
