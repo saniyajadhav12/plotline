@@ -74,16 +74,17 @@ export function TopNav() {
   }
 
   return (
-    <header className="border-b border-ink/10 bg-paper">
-      <div className="max-w-6xl mx-auto px-8 sm:px-16 py-5 flex items-center justify-between">
+    <>
+    <header className="sticky top-0 z-40 border-b border-ink/10 bg-paper/85 backdrop-blur-md">
+      <div className="page-container py-5 flex items-center justify-between gap-6">
         <Link
           href="/"
-          className="font-[family-name:var(--font-display)] text-2xl text-ink"
+          className="shrink-0 whitespace-nowrap font-[family-name:var(--font-display)] text-2xl text-ink"
         >
           Plotline
         </Link>
 
-        <nav className="flex items-center gap-8">
+        <nav className="flex items-center gap-4 md:gap-6 lg:gap-8 whitespace-nowrap">
           {links.map((link) => {
             const isActive = pathname === link.href;
             return (
@@ -99,7 +100,7 @@ export function TopNav() {
             );
           })}
           {name && (
-            <span className="text-sm text-ink font-medium">Hi, {name}</span>
+            <span className="hidden lg:inline text-sm text-ink font-medium">Hi, {name}</span>
           )}
           <ThemeToggle />
           <button
@@ -110,6 +111,8 @@ export function TopNav() {
           </button>
         </nav>
       </div>
+
+    </header>
 
       {showConfirm && (
         <div className="fixed inset-0 bg-night/50 flex items-center justify-center z-50">
@@ -137,6 +140,6 @@ export function TopNav() {
           </div>
         </div>
       )}
-    </header>
+    </>
   );
 }

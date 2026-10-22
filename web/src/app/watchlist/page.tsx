@@ -25,7 +25,7 @@ export default async function WatchlistPage() {
     <div className="min-h-screen bg-paper">
       <TopNav />
 
-      <main className="max-w-6xl mx-auto px-8 sm:px-16 py-10">
+      <main className="page-container py-10">
         <h1 className="font-[family-name:var(--font-display)] text-3xl text-ink mb-2">
           Your Watchlist
         </h1>
@@ -38,7 +38,7 @@ export default async function WatchlistPage() {
             Nothing here yet. Add movies from their detail page to build your watchlist.
           </p>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 xl:grid-cols-8 2xl:grid-cols-10 gap-6">
             {items.map((item) => (
               <MovieCard key={item.id} {...item.movie} />
             ))}

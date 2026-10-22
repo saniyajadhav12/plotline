@@ -44,3 +44,26 @@ body {
   background-color: var(--color-paper);
   color: var(--color-ink);
 }
+
+/* Shared page layout: full width with side padding that scales with the screen,
+   capped so ultra-wide monitors don't stretch absurdly. Nav, hero and pages use
+   page-container; carousels use bleed-x + gutter-x to scroll edge to edge while
+   their first poster still lines up with everything else. */
+:root {
+  --page-gutter: clamp(1.5rem, 4vw, 4rem);
+}
+
+@utility page-container {
+  width: 100%;
+  max-width: 120rem;
+  margin-inline: auto;
+  padding-inline: var(--page-gutter);
+}
+
+@utility bleed-x {
+  margin-inline: calc(var(--page-gutter) * -1);
+}
+
+@utility gutter-x {
+  padding-inline: var(--page-gutter);
+}
