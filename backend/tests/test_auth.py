@@ -104,3 +104,37 @@ def test_reset_password_invalid_token_fails(client):
 def test_forgot_password_nonexistent_email_still_returns_200(client):
     response = client.post("/auth/forgot-password", json={"email": "nobody@example.com"})
     assert response.status_code == 200
+
+
+# --- the reset token must never leave the server outside development ---------------
+
+def test_forgot_password_does_not_return_the_token_by_default(client, monkeypatch):
+    from app.core.config import settings
+    monkeypatch.setattr(settings, "expose_reset_token_in_response", False)
+    client.post("/auth/signup", json={"name": "Ada", "email": "ada@example.com", "password": "password123"})
+
+    response = client.post("/auth/forgot-password", json={"email": "ada@example.com"})
+
+    assert response.status_code == 200
+    assert "dev_reset_token" not in response.json()
+
+
+def test_forgot_password_response_is_identical_for_known_and_unknown_emails(client, monkeypatch):
+    from app.core.config import settings
+    monkeypatch.setattr(settings, "expose_reset_token_in_response", False)
+    client.post("/auth/signup", json={"name": "Ada", "email": "ada@example.com", "password": "password123"})
+
+    known = client.post("/auth/forgot-password", json={"email": "ada@example.com"})
+    unknown = client.post("/auth/forgot-password", json={"email": "nobody@example.com"})
+
+    assert known.json() == unknown.json()
+
+
+def test_forgot_password_returns_the_token_only_in_dev_mode(client, monkeypatch):
+    from app.core.config import settings
+    monkeypatch.setattr(settings, "expose_reset_token_in_response", True)
+    client.post("/auth/signup", json={"name": "Ada", "email": "ada@example.com", "password": "password123"})
+
+    response = client.post("/auth/forgot-password", json={"email": "ada@example.com"})
+
+    assert response.json()["dev_reset_token"]

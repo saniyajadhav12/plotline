@@ -64,7 +64,7 @@ Results go into a `movie_neighbors` table (~1M rows) and columns on `movies`.
 - **Recommendations:** SciPy sparse matrices, scikit-learn (cosine similarity, TF-IDF), precomputed neighbor tables
 - **AI:** Google Gemini (`google-genai`) for explanations
 - **Data:** MovieLens `ml-latest` + TMDb API
-- **Testing:** Pytest (84 backend tests), Jest + React Testing Library (59 frontend tests)
+- **Testing:** Pytest (87 backend tests), Jest + React Testing Library (59 frontend tests)
 - **CI:** GitHub Actions: ruff + Pytest against a Postgres/pgvector service container + Docker build; ESLint + Jest + Next.js build
 - **Hosting:** Vercel (frontend), Render (backend, Docker), Neon (Postgres), all on free tiers; merges to `main` auto-deploy
 
@@ -136,7 +136,7 @@ Production was built by migrating a fresh Neon database (`alembic upgrade head`)
 - **Cold starts** of about a minute on the free backend tier
 - **Watch providers are US-only** in the live demo, to keep the database within the free tier
 - **Semantic ("search by plot") search** is built (pgvector + sentence-transformers) but hidden; the production image ships without PyTorch to fit in 512 MB of RAM
-- **Password reset** works in development mode only (the reset token is shown on screen; no email is sent)
+- **Password reset** currently works only in local development (the reset token is never returned by the live API); email delivery of reset links is in progress
 - **Gemini's free tier** allows only a small number of requests per day, after which explanations use the templated fallback
 
 ## Roadmap
