@@ -211,3 +211,42 @@ def test_unknown_email_returns_no_token_even_with_the_internal_key(client, monke
     monkeypatch.setattr(settings, "internal_api_key", INTERNAL_KEY)
 
     assert "reset_token" not in _forgot(client, email="nobody@example.com", key=INTERNAL_KEY).json()
+
+
+# --- checking a reset link before showing the form ------------------------------------
+
+def _token_for(client, monkeypatch, email="val@example.com"):
+    from app.core.config import settings
+    monkeypatch.setattr(settings, "internal_api_key", INTERNAL_KEY)
+    _signup(client, email=email)
+    return _forgot(client, email=email, key=INTERNAL_KEY).json()["reset_token"]
+
+
+def _is_valid(client, token):
+    return client.get("/auth/reset-password/validate", params={"token": token}).json()["valid"]
+
+
+def test_a_fresh_reset_token_is_valid(client, monkeypatch):
+    assert _is_valid(client, _token_for(client, monkeypatch)) is True
+
+
+def test_an_unknown_reset_token_is_invalid(client):
+    assert _is_valid(client, "not-a-real-token") is False
+
+
+def test_a_used_reset_token_is_invalid(client, monkeypatch):
+    token = _token_for(client, monkeypatch)
+    client.post("/auth/reset-password", json={"token": token, "new_password": "brandnew456"})
+
+    assert _is_valid(client, token) is False
+
+
+def test_an_expired_reset_token_is_invalid(client, db_session, monkeypatch):
+    from datetime import datetime, timedelta, timezone
+    from app.models import PasswordResetToken
+    token = _token_for(client, monkeypatch)
+    row = db_session.query(PasswordResetToken).filter(PasswordResetToken.token == token).first()
+    row.expires_at = datetime.now(timezone.utc) - timedelta(minutes=1)
+    db_session.commit()
+
+    assert _is_valid(client, token) is False

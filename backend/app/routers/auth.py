@@ -134,3 +134,13 @@ def reset_password(payload: ResetPasswordRequest, db: Session = Depends(get_db))
     db.commit()
 
     return {"message": "Password has been reset successfully."}
+
+
+@router.get("/reset-password/validate")
+def validate_reset_token(token: str, db: Session = Depends(get_db)):
+    """Lets the reset page say up front whether a link still works (exists and hasn't
+    expired; used tokens are deleted on reset). Reveals nothing about the account, and
+    tokens are 32 random bytes, so they can't be found by guessing."""
+    token_row = db.query(PasswordResetToken).filter(PasswordResetToken.token == token).first()
+    valid = token_row is not None and token_row.expires_at >= datetime.now(timezone.utc)
+    return {"valid": valid}
