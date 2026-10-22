@@ -80,6 +80,11 @@ function LoginForm() {
           onChange={setPassword}
           autoComplete="current-password"
         />
+        <p className="-mt-2 mb-4 text-right text-sm">
+          <Link href="/forgot-password" className="text-silver underline hover:text-ink">
+            Forgot password?
+          </Link>
+        </p>
         {error && <p className="text-marquee text-sm mb-4">{error}</p>}
         <SubmitButton loading={loading}>Sign in</SubmitButton>
       </form>

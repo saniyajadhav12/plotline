@@ -22,12 +22,14 @@ export async function backendFetch<T>(
     method?: string;
     body?: unknown;
     token?: string;
+    headers?: Record<string, string>;
   } = {}
 ): Promise<T> {
-  const { method = "GET", body, token } = options;
+  const { method = "GET", body, token, headers: extraHeaders } = options;
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
+    ...extraHeaders,
   };
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;

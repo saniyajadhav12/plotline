@@ -19,6 +19,8 @@ from app.schemas.auth import (
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
+RESET_REQUESTS_PER_HOUR = 3
+
 
 def get_current_user(
     authorization: str | None = Header(default=None),
@@ -68,9 +70,25 @@ def get_me(current_user: User = Depends(get_current_user)):
 
 
 @router.post("/forgot-password", status_code=status.HTTP_200_OK)
-def forgot_password(payload: ForgotPasswordRequest, db: Session = Depends(get_db)):
+def forgot_password(
+    payload: ForgotPasswordRequest,
+    db: Session = Depends(get_db),
+    x_internal_key: str | None = Header(default=None),
+):
     user = db.query(User).filter(User.email == payload.email).first()
     if not user:
+        return {"message": "If that email is registered, a reset link has been sent."}
+
+    # Rate limit: at most RESET_REQUESTS_PER_HOUR per account, so the form can't be used
+    # to flood someone's inbox. Over the limit, nothing is created or sent, but the
+    # response looks exactly the same.
+    one_hour_ago = datetime.now(timezone.utc) - timedelta(hours=1)
+    recent_requests = (
+        db.query(PasswordResetToken)
+        .filter(PasswordResetToken.user_id == user.id, PasswordResetToken.created_at >= one_hour_ago)
+        .count()
+    )
+    if recent_requests >= RESET_REQUESTS_PER_HOUR:
         return {"message": "If that email is registered, a reset link has been sent."}
 
     reset_token = secrets.token_urlsafe(32)
@@ -86,6 +104,16 @@ def forgot_password(payload: ForgotPasswordRequest, db: Session = Depends(get_db
     if settings.expose_reset_token_in_response:
         print(f"[DEV] Password reset token for {user.email}: {reset_token}")
         response["dev_reset_token"] = reset_token
+
+    # The frontend's server (which emails the link) proves itself with the shared
+    # secret; only then is the token returned, so it never reaches a browser.
+    # compare_digest avoids leaking the secret through response timing.
+    if (
+        settings.internal_api_key
+        and x_internal_key
+        and secrets.compare_digest(x_internal_key, settings.internal_api_key)
+    ):
+        response["reset_token"] = reset_token
 
     return response
 
@@ -106,3 +134,13 @@ def reset_password(payload: ResetPasswordRequest, db: Session = Depends(get_db))
     db.commit()
 
     return {"message": "Password has been reset successfully."}
+
+
+@router.get("/reset-password/validate")
+def validate_reset_token(token: str, db: Session = Depends(get_db)):
+    """Lets the reset page say up front whether a link still works (exists and hasn't
+    expired; used tokens are deleted on reset). Reveals nothing about the account, and
+    tokens are 32 random bytes, so they can't be found by guessing."""
+    token_row = db.query(PasswordResetToken).filter(PasswordResetToken.token == token).first()
+    valid = token_row is not None and token_row.expires_at >= datetime.now(timezone.utc)
+    return {"valid": valid}
