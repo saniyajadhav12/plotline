@@ -4,6 +4,7 @@ import { backendFetch } from "@/lib/api";
 import { TopNav } from "@/components/layout/TopNav";
 import { MovieCard } from "@/components/movies/MovieCard";
 import { PasswordForm } from "@/components/profile/PasswordForm";
+import { DeleteAccountSection } from "@/components/profile/DeleteAccountSection";
 import { RegionSelector } from "@/components/profile/RegionSelector";
 import { Avatar } from "@/components/profile/Avatar";
 
@@ -199,6 +200,13 @@ export default async function ProfilePage() {
               ))}
             </div>
           )}
+        </section>
+
+        <section className="mt-10 border border-ink/10 border-l-4 border-l-marquee p-6 sm:p-8 pl-8 sm:pl-10">
+          <h2 className="font-[family-name:var(--font-display)] text-xl text-ink mb-2">
+            Delete Account
+          </h2>
+          <DeleteAccountSection />
         </section>
       </main>
     </div>

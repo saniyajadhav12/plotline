@@ -118,3 +118,16 @@ describe("Login page", () => {
     expect(screen.getByRole("button", { name: "Sign in" })).toBeEnabled();
   });
 });
+
+describe("Login page after an account deletion", () => {
+  it("shows the account-deleted banner when redirected with ?account_deleted=1", () => {
+    mockSearchParams = new URLSearchParams("account_deleted=1");
+    render(<LoginPage />);
+    expect(screen.getByRole("status")).toHaveTextContent("Your account has been deleted.");
+  });
+
+  it("doesn't show the account-deleted banner on a normal visit", () => {
+    render(<LoginPage />);
+    expect(screen.queryByText("Your account has been deleted.")).not.toBeInTheDocument();
+  });
+});
