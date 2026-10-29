@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ThemeToggle } from "@/components/theme/ThemeToggle";
 
 export function AuthShell({
   title,
@@ -13,13 +14,14 @@ export function AuthShell({
 }) {
   return (
     <div className="min-h-screen bg-paper flex flex-col">
-      <header className="px-8 py-6 sm:px-16">
+      <header className="px-8 py-6 sm:px-16 flex items-center justify-between">
         <Link
           href="/"
           className="font-[family-name:var(--font-display)] text-2xl text-ink"
         >
           Plotline
         </Link>
+        <ThemeToggle />
       </header>
 
       <main className="flex-1 flex items-center px-8 sm:px-16">
