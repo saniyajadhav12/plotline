@@ -12,7 +12,12 @@ const links = [
   { href: "/profile", label: "Profile" },
 ];
 
-export function TopNav() {
+type TopNavProps = {
+  /** Hide the page links (Home, Search, Watchlist, Profile), e.g. during first-time onboarding. */
+  minimal?: boolean;
+};
+
+export function TopNav({ minimal = false }: TopNavProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [name, setName] = useState<string | null>(null);
@@ -85,7 +90,7 @@ export function TopNav() {
         </Link>
 
         <nav className="flex items-center gap-4 md:gap-6 lg:gap-8 whitespace-nowrap">
-          {links.map((link) => {
+          {!minimal && links.map((link) => {
             const isActive = pathname === link.href;
             return (
               <Link

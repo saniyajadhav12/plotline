@@ -28,15 +28,17 @@ export default async function OnboardingPage() {
     )
   );
 
+  const isFirstTime = existing.selected_genres === null && existing.selected_movie_ids === null;
+
   return (
     <div className="min-h-screen bg-paper">
-      <TopNav />
+      <TopNav minimal={isFirstTime} />
       <div className="px-8 py-12 sm:px-16">
         <div className="max-w-3xl mx-auto">
           <OnboardingForm
             initialGenres={existing.selected_genres || []}
             initialMovies={initialMovies.filter((m): m is Movie => m !== null)}
-            isFirstTime={existing.selected_genres === null && existing.selected_movie_ids === null}
+            isFirstTime={isFirstTime}
           />
         </div>
       </div>
