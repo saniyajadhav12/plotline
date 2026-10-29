@@ -6,7 +6,7 @@ from app.core.security import hash_password, verify_password
 from app.models import User
 from app.routers.auth import get_current_user
 from app.schemas.auth import UserResponse
-from app.schemas.user import ChangePasswordRequest, ChangeRegionRequest
+from app.schemas.user import ChangePasswordRequest, ChangeRegionRequest, DeleteAccountRequest
 
 router = APIRouter(prefix="/users/me", tags=["users"])
 
@@ -33,6 +33,23 @@ def change_password(
     db.commit()
 
     return {"message": "Password updated successfully"}
+
+
+@router.delete("", status_code=status.HTTP_200_OK)
+def delete_account(
+    payload: DeleteAccountRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Permanently deletes the account. Ratings, watchlist, onboarding choices, reset
+    tokens and recommendation logs go with it (ON DELETE CASCADE in the database)."""
+    if not verify_password(payload.password, current_user.hashed_password):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Password is incorrect")
+
+    db.delete(current_user)
+    db.commit()
+
+    return {"message": "Account deleted"}
 
 
 @router.put("/region", response_model=UserResponse)

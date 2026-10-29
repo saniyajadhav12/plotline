@@ -9,12 +9,17 @@ import { SubmitButton } from "@/components/auth/SubmitButton";
 import { parseErrorDetail } from "@/lib/errors";
 import { useWarmUpBackend } from "@/lib/useWarmUpBackend";
 
+/** Shared style for the notices shown above the form (session expired, account deleted). */
+const NOTICE_CLASS =
+  "text-sm text-ink mb-5 bg-gold/15 border border-gold/30 border-l-4 border-l-gold px-4 py-3";
+
 function LoginForm() {
   const router = useRouter();
   // This page renders without the backend, so start waking it now (free tier sleeps when idle).
   useWarmUpBackend();
   const searchParams = useSearchParams();
   const sessionExpired = searchParams.get("session_expired") === "1";
+  const accountDeleted = searchParams.get("account_deleted") === "1";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -61,8 +66,13 @@ function LoginForm() {
       }
     >
       {sessionExpired && (
-        <p className="text-sm text-silver mb-4 bg-film/5 border border-ink/10 px-3 py-2.5">
+        <p className={NOTICE_CLASS}>
           Your session expired. Please sign in again.
+        </p>
+      )}
+      {accountDeleted && (
+        <p role="status" className={NOTICE_CLASS}>
+          Your account has been deleted.
         </p>
       )}
       <form onSubmit={handleSubmit}>
