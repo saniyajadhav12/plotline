@@ -8,8 +8,8 @@ import { FormField } from "@/components/auth/FormField";
 import { SubmitButton } from "@/components/auth/SubmitButton";
 import { parseErrorDetail } from "@/lib/errors";
 import { useWarmUpBackend } from "@/lib/useWarmUpBackend";
+import { newPasswordError } from "@/lib/passwordRules";
 
-const MIN_PASSWORD_LENGTH = 8; // same rule as the backend
 const PRIMARY_LINK =
   "inline-block bg-marquee text-cream px-5 py-2.5 text-sm font-medium hover:bg-marquee/90 transition-colors";
 
@@ -100,11 +100,11 @@ function ResetPasswordForm() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
-    const tooShort = password.length < MIN_PASSWORD_LENGTH;
+    const passwordProblem = newPasswordError(password);
     const mismatch = password !== confirm;
-    setPasswordError(tooShort ? `Use at least ${MIN_PASSWORD_LENGTH} characters.` : "");
-    setConfirmError(!tooShort && mismatch ? "Passwords don't match." : "");
-    if (tooShort || mismatch) return;
+    setPasswordError(passwordProblem);
+    setConfirmError(!passwordProblem && mismatch ? "Passwords don't match." : "");
+    if (passwordProblem || mismatch) return;
 
     setLoading(true);
     try {

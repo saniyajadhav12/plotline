@@ -71,3 +71,19 @@ def test_change_region_success(client):
     assert response.status_code == 200
     data = response.json()
     assert data["region_preference"] == "IN"
+
+
+def test_change_password_same_as_current_fails(client):
+    token = _signup_and_login(client, email="pwuser4@example.com", password="correctpass123")
+    headers = {"Authorization": f"Bearer {token}"}
+
+    response = client.put(
+        "/users/me/password",
+        json={"current_password": "correctpass123", "new_password": "correctpass123"},
+        headers=headers,
+    )
+    assert response.status_code == 400
+    assert response.json()["detail"] == "New password must be different from your current password."
+
+    login = client.post("/auth/login", json={"email": "pwuser4@example.com", "password": "correctpass123"})
+    assert login.status_code == 200
