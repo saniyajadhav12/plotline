@@ -22,6 +22,13 @@ def change_password(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Current password is incorrect"
         )
 
+    # Checked only after the current password is verified, so a wrong guess learns nothing more.
+    if payload.new_password == payload.current_password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="New password must be different from your current password.",
+        )
+
     current_user.hashed_password = hash_password(payload.new_password)
     db.commit()
 
