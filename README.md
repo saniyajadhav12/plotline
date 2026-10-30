@@ -6,6 +6,17 @@ Plotline is a full-stack movie recommendation app. It combines **collaborative f
 
 > **Heads-up on the demo:** everything runs on free tiers ($0/month). The backend sleeps after 15 minutes without traffic, so the **first request after a quiet period can take about a minute** while it wakes up. After that, it's fast.
 
+## Screenshots
+
+![Plotline home page in dark mode: a hero banner for the top recommendation, The Prestige, above a "Recommended for You" row of movie posters](docs/screenshots/home-recommendations-dark.webp)
+
+| | |
+|---|---|
+| ![Plotline home page in light mode with the same hero banner and recommendation row](docs/screenshots/home-recommendations-light.webp) | ![Movie detail page for The Prestige showing ratings, a "Why this was recommended" explanation, cast and US streaming providers](docs/screenshots/movie-detail.webp) |
+| **Light mode:** every page supports light, dark and system themes | **Movie detail:** ratings, why it was picked, cast and where to watch |
+| ![Search page filtered to Science Fiction, showing 1,159 results as a grid of posters](docs/screenshots/search-filters.webp) | ![Taste profile page with selected genres, six favorite movies and a "Blade Runner" search in progress](docs/screenshots/onboarding.webp) |
+| **Search:** title search with genre and language filters | **Onboarding:** pick genres and favorite movies to get recommendations right away |
+
 ## Features
 
 - **Accounts:** email/password sign-up and login with JWT sessions in an httpOnly cookie; 7-day sessions that redirect to the login page with a clear message when they expire
