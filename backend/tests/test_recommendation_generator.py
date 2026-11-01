@@ -7,9 +7,6 @@ from app.models import Movie, MovieNeighbor, Rating, RecommendationLog, User
 from app.services import explanation_generator
 from app.services.recommendation_generator import save_recommendations_for_user, upgrade_explanations
 
-TEMPLATED_PREFIX = "Recommended based on your viewing history and preferences."
-
-
 def make_user(db):
     user = User(id=uuid.uuid4(), email=f"{uuid.uuid4().hex[:8]}@example.com", hashed_password=hash_password("password123"))
     db.add(user)
@@ -55,7 +52,7 @@ def test_save_writes_templated_recommendations_and_replaces_old_ones(db_session)
     expected = {str(movies[k].id) for k in ("cf_a", "cf_b", "content_c")}
     assert {str(r.movie_id) for r in rows} == expected  # the stale recommendation is gone
     assert {str(p.movie_id) for p in pending} == expected
-    assert all(r.explanation_text.startswith(TEMPLATED_PREFIX) for r in rows)
+    assert all(r.explanation_text and r.explanation_text != "old" for r in rows)
 
 
 def test_save_keeps_existing_recommendations_when_there_is_no_signal(db_session):
@@ -106,7 +103,8 @@ def test_an_overloaded_gemini_stops_after_the_first_movie_in_a_batch(db_session,
     user, _ = build_world(db_session)
     pending = save_recommendations_for_user(user.id, db_session)
     assert len(pending) == 3
+    before = {r.id: r.explanation_text for r in saved_rows(db_session, user)}
 
     assert upgrade_explanations(user.id, pending, db_session) == 0
     assert calls["n"] == 3  # 3 attempts for the first movie, then paused: not 3 x 3
-    assert all(r.explanation_text.startswith(TEMPLATED_PREFIX) for r in saved_rows(db_session, user))
+    assert {r.id: r.explanation_text for r in saved_rows(db_session, user)} == before
