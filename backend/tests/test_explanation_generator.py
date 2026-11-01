@@ -82,3 +82,43 @@ def test_a_failure_then_success_returns_the_text_and_does_not_pause(monkeypatch)
     assert result == "Because you loved Inception."
     assert calls["n"] == 2
     assert eg.gemini_available() is True
+
+
+# --- request timeout (fake client, no network) ------------------------------------
+
+import requests  # noqa: E402
+import pytest  # noqa: E402
+
+
+@pytest.mark.parametrize(
+    "timeout_error",
+    [requests.exceptions.ReadTimeout("Read timed out."), requests.exceptions.ConnectTimeout("Connect timed out.")],
+)
+def test_a_timeout_pauses_gemini_without_retrying(monkeypatch, capsys, timeout_error):
+    client, calls = _fake_client([timeout_error])
+    _setup_gemini(monkeypatch, client)
+
+    result = eg.try_gemini_explanation(None, SimpleNamespace(title="Movie"), {}, None, max_retries=3)
+
+    assert result is None
+    assert calls["n"] == 1  # no retries: each would wait the full timeout again
+    assert eg.gemini_available() is False
+    remaining = eg._gemini_disabled_until - time.time()
+    assert eg.OVERLOAD_COOLDOWN_SECONDS - 5 < remaining <= eg.OVERLOAD_COOLDOWN_SECONDS
+    assert f"request timed out after {eg.GEMINI_TIMEOUT_SECONDS}s" in capsys.readouterr().out
+
+
+def test_the_client_is_created_with_a_request_timeout(monkeypatch):
+    captured = {}
+
+    class FakeClient:
+        def __init__(self, **kwargs):
+            captured.update(kwargs)
+
+    monkeypatch.setattr(settings, "gemini_api_key", "test-key")
+    monkeypatch.setattr(eg, "_client", None)
+    monkeypatch.setattr(eg.genai, "Client", FakeClient)
+
+    eg._get_client()
+
+    assert captured["http_options"] == {"timeout": eg.GEMINI_TIMEOUT_SECONDS * 1000}

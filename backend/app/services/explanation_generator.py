@@ -8,12 +8,15 @@ Gemini is treated as an optional enhancement, never a dependency:
   - A simple circuit breaker stops calling Gemini entirely after a quota
     (429) error, for as long as the API says to wait, so a used-up free
     tier costs zero time instead of 3 retries per movie.
+  - Every request has a timeout (GEMINI_TIMEOUT_SECONDS). A request that gets no
+    answer in time pauses Gemini briefly instead of hanging the background job.
 """
 import re
 import threading
 import time
 import uuid
 
+import requests
 from google import genai
 from sqlalchemy.orm import Session
 
@@ -29,13 +32,17 @@ def _get_client():
     the templated text."""
     global _client
     if _client is None and settings.gemini_api_key:
-        _client = genai.Client(api_key=settings.gemini_api_key)
+        _client = genai.Client(
+            api_key=settings.gemini_api_key,
+            http_options={"timeout": GEMINI_TIMEOUT_SECONDS * 1000},  # milliseconds
+        )
     return _client
 
 GEMINI_MODEL = "gemini-3.8-flash"
 DEFAULT_COOLDOWN_SECONDS = 60          # when a 429 doesn't say how long to wait
 MAX_COOLDOWN_SECONDS = 24 * 60 * 60    # never back off longer than a day
 OVERLOAD_COOLDOWN_SECONDS = 120        # after every retry fails (e.g. 503 high demand)
+GEMINI_TIMEOUT_SECONDS = 45           # a short reply measured ~18s; leaves headroom
 
 _circuit_lock = threading.Lock()
 _gemini_disabled_until = 0.0
@@ -113,6 +120,8 @@ def try_gemini_explanation(
     - Circuit open (recent quota error): returns None immediately.
     - Quota error (429): opens the circuit and returns None without retrying.
     - Other errors (e.g. 503 high demand): retries with backoff, then None.
+    - Timeout (no answer within GEMINI_TIMEOUT_SECONDS): no retry, since each retry
+      would wait the full timeout again. Pauses Gemini briefly, then None.
     """
     if not gemini_available():
         return None
@@ -135,6 +144,11 @@ def try_gemini_explanation(
             response = client.models.generate_content(model=GEMINI_MODEL, contents=prompt)
             text = (response.text or "").strip()
             return text or None
+        except requests.exceptions.Timeout:
+            _disable_gemini_for(
+                OVERLOAD_COOLDOWN_SECONDS, f"request timed out after {GEMINI_TIMEOUT_SECONDS}s"
+            )
+            return None
         except Exception as e:
             error_text = str(e)
             if _is_quota_error(error_text):
